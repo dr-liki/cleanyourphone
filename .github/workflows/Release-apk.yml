@@ -45,6 +45,9 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.9
+
       - name: Auto-Patch Kotlin Sources (Fix Shizuku newProcess & Multiline String)
         run: |
           # Remove any accidentally uploaded duplicate files or root-level .kt files
@@ -133,7 +136,7 @@ jobs:
           ls -la "$GITHUB_WORKSPACE/keystore/release.jks"
 
       - name: Build Signed Release APK
-        run: gradle assembleRelease --no-daemon --rerun-tasks --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --rerun-tasks --stacktrace
 
       - name: Package APK & Generate SHA256SUMS.txt
         id: package_step

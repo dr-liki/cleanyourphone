@@ -95,6 +95,7 @@ data class ActionLogEntry(
 
 enum class PrivilegeMode(val title: String, val detail: String) {
     SHIZUKU_READY("Shizuku Active (User 0)", "Connected to Shizuku privileged binder"),
+    SHIZUKU_PERMISSION_NEEDED("Shizuku — Grant Permission", "Tap to grant Shizuku permission and unlock live pm commands"),
     WIRELESS_ADB("Wireless ADB (127.0.0.1)", "Connected over local encrypted Wireless Debugging"),
-    DEMO_PREVIEW("Preview Mode", "Grant Shizuku or connect Wireless ADB to execute live pm commands")
+    SIMULATION("Simulation Mode", "Grant Shizuku or connect Wireless ADB to execute live pm commands")
 }
