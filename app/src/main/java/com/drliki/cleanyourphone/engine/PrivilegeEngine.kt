@@ -34,9 +34,7 @@ class PrivilegeEngine {
             if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
                 Shizuku.requestPermission(requestCode)
             }
-        } catch (_: Throwable) {
-            // Shizuku manager not running or binder unavailable
-        }
+        } catch (_: Throwable) {}
     }
 
     suspend fun disablePackageUser0(
@@ -85,9 +83,7 @@ class PrivilegeEngine {
             Array<String>::class.java,
             Array<String>::class.java,
             String::class.java
-        ).apply {
-            isAccessible = true
-        }
+        ).apply { isAccessible = true }
 
         val process = newProcessMethod.invoke(
             null,
@@ -106,3 +102,33 @@ class PrivilegeEngine {
         return stdout.trim()
     }
 }
+```[cite: 7]
+
+#### 2. Fix `CleanYourPhoneApp.kt` (Multiline String Escaping)
+In `PhoneOverviewTab`, use a raw triple-quote string (`"""..."""`) or properly escaped `\n` characters for the safeguard notice text so the Kotlin parser doesn't break on line splits[cite: 8]:
+
+```kotlin
+        item {
+            Surface(
+                color = TvSlimCard,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("🧱 Active TVSlim-Style Safeguards", fontWeight = FontWeight.Bold, color = TvSlimTextPrimary)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = """
+                            • System packages are never uninstalled — only disabled with 'pm disable-user --user 0'.
+                            • UAD-ng 'Unsafe' packages and core telephony/SystemUI services are hard-locked.
+                            • Active Home launcher and default keyboard cannot be disabled unless a replacement is enabled.
+                        """.trimIndent(),
+                        color = TvSlimTextSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+```[cite: 8]
+
+---
