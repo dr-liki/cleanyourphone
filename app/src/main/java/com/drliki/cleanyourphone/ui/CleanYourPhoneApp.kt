@@ -466,10 +466,8 @@ private fun PhoneOverviewTab(
                     Text("🧱 Active TVSlim-Style Safeguards", fontWeight = FontWeight.Bold, color = TvSlimTextPrimary)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "• System packages are never uninstalled — only disabled with 'pm disable-user --user 0'.
-" +
-                            "• UAD-ng 'Unsafe' packages and core telephony/SystemUI services are hard-locked.
-" +
+                        text = "• System packages are never uninstalled — only disabled with 'pm disable-user --user 0'.\n" +
+                            "• UAD-ng 'Unsafe' packages and core telephony/SystemUI services are hard-locked.\n" +
                             "• Active Home launcher and default keyboard cannot be disabled unless a replacement is enabled.",
                         color = TvSlimTextSecondary,
                         fontSize = 13.sp
