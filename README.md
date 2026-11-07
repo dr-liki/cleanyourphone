@@ -133,3 +133,25 @@ cd cleanyourphone
 ## License
 
 Licensed under the **Apache License 2.0** — see [LICENSE](LICENSE) for details.
+
+---
+
+## Publishing a Signed APK & GitHub Release
+
+This repository includes an automated GitHub Actions pipeline (`.github/workflows/release-apk.yml`) that compiles, shrinks (R8), signs (`V1/V2/V3`), checksums (`SHA256SUMS.txt`), and publishes `CleanYourPhone-vX.Y.Z.apk` directly to **GitHub Releases**:
+
+### Option A — One-Click Release in GitHub Browser (No Local Tools Needed)
+1. Upload this repository to `https://github.com/dr-liki/cleanyourphone`.
+2. Open the **Actions** tab on GitHub → select **Build & Release Signed APK** on the left → click **Run workflow** → enter `v1.0.0` and click **Run workflow**.
+3. Within ~2 minutes, GitHub Actions builds the signed `CleanYourPhone-v1.0.0.apk` and `SHA256SUMS.txt` and publishes them on your repository's **Releases** page.
+
+### Option B — Tag Push or Custom Keystore Signing
+1. (Optional) Generate your own persistent release keystore and upload it to GitHub Secrets:
+   ```bash
+   bash tools/generate-keystore.sh
+   ```
+2. Push any `v*` tag to trigger an automated signed release:
+   ```bash
+   git tag -a v1.0.0 -m "CleanYourPhone v1.0.0"
+   git push origin v1.0.0
+   ```

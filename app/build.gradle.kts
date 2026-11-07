@@ -1,7 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(FileInputStream(keystorePropertiesFile))
+    }
 }
 
 android {
@@ -20,16 +30,47 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val envStoreFile = System.getenv("SIGNING_STORE_FILE")
+            val propStoreFile = keystoreProperties.getProperty("storeFile")
+            val resolvedFile = when {
+                !envStoreFile.isNullOrBlank() -> file(envStoreFile)
+                !propStoreFile.isNullOrBlank() -> rootProject.file(propStoreFile)
+                else -> null
+            }
+
+            if (resolvedFile != null && resolvedFile.exists()) {
+                storeFile = resolvedFile
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                    ?: keystoreProperties.getProperty("storePassword")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                    ?: keystoreProperties.getProperty("keyAlias")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+                    ?: keystoreProperties.getProperty("keyPassword")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
