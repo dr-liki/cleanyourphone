@@ -18,14 +18,14 @@ class PrivilegeEngine {
     fun detectPrivilegeMode(): PrivilegeMode {
         return try {
             if (!Shizuku.pingBinder()) {
-                PrivilegeMode.SIMULATION_PREVIEW
+                PrivilegeMode.SIMULATION
             } else if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                 PrivilegeMode.SHIZUKU_READY
             } else {
                 PrivilegeMode.SHIZUKU_PERMISSION_NEEDED
             }
         } catch (_: Throwable) {
-            PrivilegeMode.SIMULATION_PREVIEW
+            PrivilegeMode.SIMULATION
         }
     }
 
@@ -53,10 +53,10 @@ class PrivilegeEngine {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
             ActionLogEntry(
                 id = UUID.randomUUID().toString(),
-                timestamp = timestamp,
+                timestampIso = timestamp,
                 packageName = packageName,
                 appLabel = appLabel,
-                tierLabel = tierLabel,
+                tier = tierLabel,
                 commandExecuted = disableCmd,
                 undoCommand = undoCmd,
                 undone = false
