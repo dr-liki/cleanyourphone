@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.io.File
 
 plugins {
     id("com.android.application")
@@ -35,7 +36,7 @@ android {
             val envStoreFile = System.getenv("SIGNING_STORE_FILE")
             val propStoreFile = keystoreProperties.getProperty("storeFile")
             val resolvedFile = when {
-                !envStoreFile.isNullOrBlank() -> file(envStoreFile)
+                !envStoreFile.isNullOrBlank() -> File(envStoreFile)
                 !propStoreFile.isNullOrBlank() -> rootProject.file(propStoreFile)
                 else -> null
             }
