@@ -24,3 +24,9 @@
 # Keep DADb classes
 -keep class dadb.** { *; }
 -dontwarn dadb.**
+
+# Suppress R8 missing-class errors for JUnit Platform pulled in transitively by dadb.
+# java.util.spi.ToolProvider is a Java SE SPI not available on Android - safe to ignore.
+-dontwarn org.junit.**
+-dontwarn java.util.spi.ToolProvider
+-dontwarn org.junit.platform.console.ConsoleLauncherToolProvider
