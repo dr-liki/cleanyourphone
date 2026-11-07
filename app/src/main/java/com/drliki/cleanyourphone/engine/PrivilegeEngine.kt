@@ -75,7 +75,19 @@ class PrivilegeEngine {
     private fun runPrivilegedShell(command: String): Result<String> {
         return try {
             if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
+               val newProcessMethod = rikka.shizuku.Shizuku::class.java.getDeclaredMethod(
+    "newProcess",
+    Array<String>::class.java,
+    Array<String>::class.java,
+    String::class.java
+).apply { isAccessible = true }
+
+val process = newProcessMethod.invoke(
+    null,
+    arrayOf("sh", "-c", command),
+    null,
+    null
+) as Process
                 val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
                 val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
                 val exit = process.waitFor()
