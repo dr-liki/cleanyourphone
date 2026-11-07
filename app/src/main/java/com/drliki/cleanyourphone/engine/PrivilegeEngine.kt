@@ -13,22 +13,19 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-/**
- * Executes reversible `pm disable-user --user 0 <package>` and `pm enable <package>`
- * commands on-device via Shizuku or local Wireless ADB.
- * Never runs `pm uninstall` on system packages.
- */
 class PrivilegeEngine {
 
     fun detectPrivilegeMode(): PrivilegeMode {
         return try {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            if (!Shizuku.pingBinder()) {
+                PrivilegeMode.SIMULATION_PREVIEW
+            } else if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                 PrivilegeMode.SHIZUKU_READY
             } else {
-                PrivilegeMode.DEMO_PREVIEW
+                PrivilegeMode.SHIZUKU_PERMISSION_NEEDED
             }
         } catch (_: Throwable) {
-            PrivilegeMode.DEMO_PREVIEW
+            PrivilegeMode.SIMULATION_PREVIEW
         }
     }
 
@@ -38,7 +35,7 @@ class PrivilegeEngine {
                 Shizuku.requestPermission(requestCode)
             }
         } catch (_: Throwable) {
-            // Shizuku manager not running
+            // Shizuku manager not running or binder unavailable
         }
     }
 
@@ -47,16 +44,22 @@ class PrivilegeEngine {
         appLabel: String,
         tierLabel: String
     ): Result<ActionLogEntry> = withContext(Dispatchers.IO) {
-        val cmd = "pm disable-user --user 0 $packageName"
-        val undoCmd = "pm enable $packageName"
-        runPrivilegedShell(cmd).map {
+        val disableCmd = "pm disable-user --user 0 $packageName"
+        val undoCmd = "pm enable --user 0 $packageName"
+        val mode = detectPrivilegeMode()
+
+        runCatching {
+            if (mode == PrivilegeMode.SHIZUKU_READY) {
+                executeShizukuShell(disableCmd)
+            }
+            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
             ActionLogEntry(
                 id = UUID.randomUUID().toString(),
-                timestampIso = nowFormatted(),
+                timestamp = timestamp,
                 packageName = packageName,
                 appLabel = appLabel,
-                tier = tierLabel,
-                commandExecuted = cmd,
+                tierLabel = tierLabel,
+                commandExecuted = disableCmd,
                 undoCommand = undoCmd,
                 undone = false
             )
@@ -64,46 +67,42 @@ class PrivilegeEngine {
     }
 
     suspend fun enablePackageUser0(packageName: String): Result<String> = withContext(Dispatchers.IO) {
-        val cmd = "pm enable $packageName"
-        runPrivilegedShell(cmd)
-    }
+        val enableCmd = "pm enable --user 0 $packageName"
+        val mode = detectPrivilegeMode()
 
-    suspend fun forceStopPackage(packageName: String): Result<String> = withContext(Dispatchers.IO) {
-        runPrivilegedShell("am force-stop $packageName")
-    }
-
-    private fun runPrivilegedShell(command: String): Result<String> {
-        return try {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-               val newProcessMethod = rikka.shizuku.Shizuku::class.java.getDeclaredMethod(
-    "newProcess",
-    Array<String>::class.java,
-    Array<String>::class.java,
-    String::class.java
-).apply { isAccessible = true }
-
-val process = newProcessMethod.invoke(
-    null,
-    arrayOf("sh", "-c", command),
-    null,
-    null
-) as Process
-                val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
-                val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
-                val exit = process.waitFor()
-                if (exit == 0) Result.success(stdout.trim())
-                else Result.failure(IllegalStateException(stderr.ifBlank { "Exit code $exit" }))
+        runCatching {
+            if (mode == PrivilegeMode.SHIZUKU_READY) {
+                executeShizukuShell(enableCmd)
             } else {
-                // Simulated success in preview mode when Shizuku is not yet attached
-                Result.success("Preview executed: $command")
+                "Simulated: $enableCmd"
             }
-        } catch (e: Throwable) {
-            Result.success("Preview executed: $command")
         }
     }
 
-    private fun nowFormatted(): String {
-        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-        return fmt.format(Date())
+    private fun executeShizukuShell(command: String): String {
+        val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java
+        ).apply {
+            isAccessible = true
+        }
+
+        val process = newProcessMethod.invoke(
+            null,
+            arrayOf("sh", "-c", command),
+            null,
+            null
+        ) as Process
+
+        val stdout = BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
+        val stderr = BufferedReader(InputStreamReader(process.errorStream)).use { it.readText() }
+        val exitCode = process.waitFor()
+
+        if (exitCode != 0 && stderr.isNotBlank()) {
+            throw IllegalStateException("Shizuku shell failed ($exitCode): ${stderr.trim()}")
+        }
+        return stdout.trim()
     }
 }
