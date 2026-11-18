@@ -1,13 +1,13 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.0
+# 📱 CleanYourPhone v2.1
 
 **Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
 
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B%20(API%2026)-38BDF8?style=flat-square)](#compatibility)
 [![Privilege](https://img.shields.io/badge/Modes-Shizuku%20%7C%20Wireless%20ADB-10B981?style=flat-square)](#operation-modes)
 [![Database](https://img.shields.io/badge/Database-UAD--ng%20uad__lists.json-818CF8?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
-[![No Root](https://img.shields.io/badge/Root-Not%20Needed-22C55E?style=flat-square)](#safeguards)
+[![Pairing](https://img.shields.io/badge/Wireless%20Pairing-QR%20%26%20PIN-10B981?style=flat-square)](#wireless-pairing)
 [![Design](https://img.shields.io/badge/UI-Material%20Design%203-F59E0B?style=flat-square)](#user-interface)
 [![License](https://img.shields.io/badge/License-Apache--2.0-64748B?style=flat-square)](LICENSE)
 
@@ -28,10 +28,18 @@
 - 1-click batch disabling for safe bloatware, carrier apps, and telemetry services.
 
 ### 2. 📶 Other Phone (Wireless ADB Mode)
-- **Local Wi-Fi Subnet Scanner**: Auto-probes your local network (e.g. `192.168.1.1`–`254` on port `5555`) to discover other Android phones with Wireless Debugging enabled.
-- **Manual Connect**: Connect directly by IP and Port (supports custom or dynamic ports).
+- **Automatic mDNS / NSD Discovery**: Continuous discovery of other phones advertising `_adb-tls-connect._tcp` and `_adb._tcp` on local Wi-Fi, discovering their exact dynamic ports with zero guesswork.
+- **Dynamic Port Subnet Scanner**: Auto-probes local Wi-Fi subnet across any target port (default 5555 or custom dynamic ports).
+- **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
+- **Manual Connect**: Connect directly by IP and dynamic port without file permission issues.
 - **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
-- Perfect for setting up family members' phones, secondary devices, or test units completely wirelessly!
+
+---
+
+## 🔄 Live UAD-ng Database Updates
+
+- Sync the latest community-curated definitions directly from the official [Universal Android Debloater (UAD-ng)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation) repository on GitHub with one tap from the menu.
+- Persisted locally in internal app storage with fallback to bundled seed definitions.
 
 ---
 
@@ -54,11 +62,11 @@ Every package is cross-referenced with the **Universal Android Debloater Next Ge
 
 ## 🎨 Professional Material Design 3 UI/UX
 
+- Custom-crafted adaptive vector icon with obsidian-sky aesthetics.
 - Dynamic color theming with dark & light mode support.
 - Fast, instant search and filter chips across removal tiers.
 - Selection counter and floating action bar.
-- Pre-flight confirmation dialogs before executing batch actions.
-- Animated transitions and modal bottom sheets for action history.
+- Dedicated **About Dialog** with open-source credits and license details.
 
 ---
 

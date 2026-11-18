@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.screens.ModeSelectScreen
 import com.drliki.cleanyourphone.ui.screens.ShizukuScreen
 import com.drliki.cleanyourphone.ui.screens.WirelessScreen
@@ -49,6 +50,7 @@ fun CleanYourPhoneAppRoot(
     wirelessVm: WirelessViewModel = viewModel()
 ) {
     var currentScreen by remember { mutableStateOf(AppScreen.MODE_SELECT) }
+    var showAboutDialog by remember { mutableStateOf(false) }
     val shizukuStatus by shizukuVm.status.collectAsState()
 
     BackHandler(enabled = currentScreen != AppScreen.MODE_SELECT) {
@@ -70,6 +72,12 @@ fun CleanYourPhoneAppRoot(
                     },
                     onSelectWireless = {
                         currentScreen = AppScreen.WIRELESS
+                    },
+                    onUpdateUadLists = {
+                        shizukuVm.updateUadLists()
+                    },
+                    onOpenAbout = {
+                        showAboutDialog = true
                     }
                 )
             }
@@ -86,5 +94,9 @@ fun CleanYourPhoneAppRoot(
                 )
             }
         }
+    }
+
+    if (showAboutDialog) {
+        AboutDialog(onDismiss = { showAboutDialog = false })
     }
 }

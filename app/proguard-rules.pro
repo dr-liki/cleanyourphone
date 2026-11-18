@@ -1,4 +1,4 @@
-# CleanYourPhone v2 — R8 / ProGuard rules
+# CleanYourPhone v2.1 — R8 / ProGuard rules
 
 # Keep all models and serializers
 -keep class com.drliki.cleanyourphone.model.** { *; }
@@ -18,3 +18,7 @@
 -dontwarn org.junit.**
 -dontwarn java.util.spi.ToolProvider
 -dontwarn org.junit.platform.console.ConsoleLauncherToolProvider
+
+# ZXing for QR code generation
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**

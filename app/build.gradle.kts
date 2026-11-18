@@ -23,8 +23,8 @@ android {
         applicationId = "com.drliki.cleanyourphone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = 3
+        versionName = "2.1.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -119,4 +119,7 @@ dependencies {
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
     implementation("dev.mobile:dadb:1.2.8")
+
+    // QR code generation for Android 11+ Wireless Debugging pairing
+    implementation("com.google.zxing:core:3.5.3")
 }

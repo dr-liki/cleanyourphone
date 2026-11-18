@@ -1,5 +1,6 @@
 package com.drliki.cleanyourphone.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,15 +11,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.drliki.cleanyourphone.R
 import com.drliki.cleanyourphone.engine.ShizukuStatus
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
@@ -28,24 +31,27 @@ import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 fun ModeSelectScreen(
     shizukuStatus: ShizukuStatus,
     onSelectShizuku: () -> Unit,
-    onSelectWireless: () -> Unit
+    onSelectWireless: () -> Unit,
+    onUpdateUadLists: () -> Unit,
+    onOpenAbout: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.CleaningServices,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_app_logo),
+                                    contentDescription = "App Icon",
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
@@ -57,9 +63,41 @@ fun ModeSelectScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "v2.0.0 · Dual-Engine Debloater",
+                                "v2.1.0 · Dual-Engine Debloater",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Update UAD Lists") },
+                                onClick = {
+                                    showMenu = false
+                                    onUpdateUadLists()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("About") },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenAbout()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Info, contentDescription = null)
+                                }
                             )
                         }
                     }
@@ -113,8 +151,8 @@ fun ModeSelectScreen(
                 title = "Other Phone",
                 badge = "Wireless ADB",
                 subtitle = "Remote cross-phone debloating",
-                description = "Scan your local Wi-Fi network, connect to another Android phone with Wireless Debugging enabled, and disable packages remotely.",
-                statusText = "Wi-Fi Subnet Scanner Ready",
+                description = "Scan your local Wi-Fi network, discover dynamic Wireless Debugging ports automatically via mDNS, pair with QR/PIN, and disable packages remotely.",
+                statusText = "mDNS Dynamic Port Scanner Ready",
                 statusColor = MaterialTheme.colorScheme.primary,
                 buttonText = "Open Wireless Debloater",
                 onClick = onSelectWireless

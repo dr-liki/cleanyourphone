@@ -11,18 +11,68 @@ import com.drliki.cleanyourphone.model.UadEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 class UadRepository(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
     private var catalog: Map<String, UadEntry> = emptyMap()
 
+    companion object {
+        const val UAD_NG_REMOTE_URL =
+            "https://raw.githubusercontent.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/main/resources/assets/uad_lists.json"
+        private const val CACHE_FILE_NAME = "uad_lists.json"
+    }
+
+    private val cacheFile: File
+        get() = File(context.filesDir, CACHE_FILE_NAME)
+
     suspend fun loadCatalog(): Map<String, UadEntry> = withContext(Dispatchers.IO) {
         if (catalog.isNotEmpty()) return@withContext catalog
+
+        // Try local downloaded cache first
+        if (cacheFile.exists() && cacheFile.length() > 0) {
+            try {
+                val raw = cacheFile.readText()
+                catalog = json.decodeFromString<Map<String, UadEntry>>(raw)
+                if (catalog.isNotEmpty()) return@withContext catalog
+            } catch (_: Exception) { }
+        }
+
+        // Fallback to bundled asset
         val raw = context.assets.open("uad_lists_seed.json").bufferedReader().use { it.readText() }
         catalog = json.decodeFromString<Map<String, UadEntry>>(raw)
         catalog
     }
+
+    suspend fun updateFromGitHub(): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            val url = URL(UAD_NG_REMOTE_URL)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 12000
+                readTimeout = 15000
+                requestMethod = "GET"
+                setRequestProperty("User-Agent", "CleanYourPhone-Android")
+            }
+
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val downloaded = json.decodeFromString<Map<String, UadEntry>>(body)
+            if (downloaded.isEmpty()) {
+                throw IllegalStateException("Downloaded catalog is empty")
+            }
+
+            // Save to internal storage
+            cacheFile.writeText(body)
+            catalog = downloaded
+            downloaded.size
+        }
+    }
+
+    fun getCatalogSize(): Int = catalog.size
+
+    fun isUsingRemoteCache(): Boolean = cacheFile.exists() && cacheFile.length() > 0
 
     /** Scan packages installed on the local device. */
     suspend fun scanLocalPackages(): List<DevicePackage> = withContext(Dispatchers.IO) {

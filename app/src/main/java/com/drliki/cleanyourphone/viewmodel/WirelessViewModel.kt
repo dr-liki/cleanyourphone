@@ -11,11 +11,12 @@ import com.drliki.cleanyourphone.model.DiscoveredDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class WirelessViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = UadRepository(app)
-    private val engine = AdbEngine()
+    val repo = UadRepository(app)
+    private val engine = AdbEngine(app)
 
     // ── Scan state ───────────────────────────────────────────────────────────
     private val _devices = MutableStateFlow<List<DiscoveredDevice>>(emptyList())
@@ -23,6 +24,9 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning = _isScanning.asStateFlow()
+
+    private val _customScanPort = MutableStateFlow(5555)
+    val customScanPort = _customScanPort.asStateFlow()
 
     // ── Connection state ─────────────────────────────────────────────────────
     private val _isConnected = MutableStateFlow(false)
@@ -44,14 +48,51 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private val _snackbar = MutableStateFlow<String?>(null)
     val snackbar = _snackbar.asStateFlow()
 
-    // ── Actions ──────────────────────────────────────────────────────────────
-    fun startScan() {
+    // ── Pairing state ────────────────────────────────────────────────────────
+    private val _pairingQrPayload = MutableStateFlow("")
+    val pairingQrPayload = _pairingQrPayload.asStateFlow()
+
+    private val _pairingCode = MutableStateFlow("")
+    val pairingCode = _pairingCode.asStateFlow()
+
+    init {
+        // Start background mDNS/NSD service discovery for Android 11+ dynamic ports
+        startContinuousDiscovery()
+        generateNewPairingCredentials()
+    }
+
+    private fun startContinuousDiscovery() {
+        engine.startNsdDiscovery { device ->
+            val current = _devices.value.toMutableList()
+            if (current.none { it.host == device.host && it.port == device.port }) {
+                current.add(0, device)
+                _devices.value = current
+            }
+        }
+    }
+
+    fun setCustomScanPort(port: Int) {
+        _customScanPort.value = port
+    }
+
+    fun generateNewPairingCredentials() {
+        val code = (100000 + Random.nextInt(900000)).toString()
+        val sessionName = "CleanYourPhone-${Random.nextInt(1000, 9999)}"
+        _pairingCode.value = code
+        _pairingQrPayload.value = "WIFI:T:ADB;S:$sessionName;P:$code;;"
+    }
+
+    fun startScan(port: Int = _customScanPort.value) {
         viewModelScope.launch {
             _isScanning.value = true
-            _devices.value = emptyList()
-            _devices.value = engine.scanNetwork()
+            val portsToScan = if (port == 5555) listOf(5555) else listOf(port, 5555)
+            val result = engine.scanNetwork(portsToScan)
+            val merged = (_devices.value + result).distinctBy { "${it.host}:${it.port}" }
+            _devices.value = merged
             _isScanning.value = false
-            if (_devices.value.isEmpty()) _snackbar.value = "No devices found on network"
+            if (merged.isEmpty()) {
+                _snackbar.value = "No devices found. Try checking Wireless Debugging port on target phone."
+            }
         }
     }
 
@@ -73,6 +114,20 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun connectManual(host: String, port: Int) =
         connectTo(DiscoveredDevice(host, port))
 
+    fun pairWithCode(host: String, pairingPort: Int, code: String, connectPort: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val isPortOpen = engine.verifyPairingPort(host, pairingPort)
+            if (isPortOpen) {
+                _snackbar.value = "Pairing port verified! Connecting to debugging port $connectPort..."
+                connectTo(DiscoveredDevice(host, connectPort, "Paired Device ($host)", "Android Phone"))
+            } else {
+                _snackbar.value = "Cannot reach pairing port $pairingPort on $host. Check pairing code screen on other phone."
+            }
+            _isLoading.value = false
+        }
+    }
+
     fun disconnect() {
         engine.disconnect()
         _isConnected.value = false
@@ -87,6 +142,22 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             engine.listPackages()
                 .onSuccess { _packages.value = repo.resolveRemotePackages(it) }
                 .onFailure { _snackbar.value = "Failed to list packages: ${it.message}" }
+            _isLoading.value = false
+        }
+    }
+
+    fun updateUadLists() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _snackbar.value = "Updating UAD-ng definitions from GitHub..."
+            repo.updateFromGitHub()
+                .onSuccess { count ->
+                    _snackbar.value = "Updated $count package definitions from UAD-ng!"
+                    if (_isConnected.value) {
+                        loadRemotePackages()
+                    }
+                }
+                .onFailure { _snackbar.value = "Failed to update catalog: ${it.message}" }
             _isLoading.value = false
         }
     }
@@ -147,6 +218,7 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         super.onCleared()
+        engine.stopNsdDiscovery()
         engine.disconnect()
     }
 }

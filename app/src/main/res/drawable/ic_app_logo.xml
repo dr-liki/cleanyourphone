@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Rounded shield-phone container -->
+    <path
+        android:pathData="M14,6 L34,6 C36.2,6 38,7.8 38,10 L38,38 C38,40.2 36.2,42 34,42 L14,42 C11.8,42 10,40.2 10,38 L10,10 C10,7.8 11.8,6 14,6 Z"
+        android:fillColor="#131B2E"
+        android:strokeWidth="1.8"
+        android:strokeColor="#38BDF8" />
+
+    <!-- Screen area -->
+    <path
+        android:pathData="M12,12 L36,12 L36,36 L12,36 Z"
+        android:fillColor="#0B0F19" />
+
+    <!-- Top speaker bar -->
+    <path
+        android:pathData="M20,9 L28,9"
+        android:strokeWidth="1.5"
+        android:strokeColor="#64748B"
+        android:strokeLineCap="round" />
+
+    <!-- Bottom home bar -->
+    <path
+        android:pathData="M21,39 L27,39"
+        android:strokeWidth="1.5"
+        android:strokeColor="#64748B"
+        android:strokeLineCap="round" />
+
+    <!-- Center Clean Sparkle -->
+    <path
+        android:pathData="M24,16 C24,20 26,22 30,22 C26,22 24,24 24,28 C24,24 22,22 18,22 C22,22 24,20 24,16 Z"
+        android:fillColor="#10B981" />
+
+    <!-- Sparkle core -->
+    <path
+        android:pathData="M24,19.5 C24,21.5 25,22 27,22 C25,22 24,22.5 24,24.5 C24,22.5 23,22 21,22 C23,22 24,21.5 24,19.5 Z"
+        android:fillColor="#A7F3D0" />
+
+    <!-- Accent sparkle -->
+    <path
+        android:pathData="M32,14 C32,15.5 32.5,16 34,16 C32.5,16 32,16.5 32,18 C32,16.5 31.5,16 30,16 C31.5,16 32,15.5 32,14 Z"
+        android:fillColor="#38BDF8" />
+</vector>

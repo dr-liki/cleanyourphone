@@ -21,8 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.model.DiscoveredDevice
+import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.ActionLogContent
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
+import com.drliki.cleanyourphone.ui.components.PairingDialog
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 import com.drliki.cleanyourphone.viewmodel.WirelessViewModel
@@ -37,19 +39,28 @@ fun WirelessScreen(
     val connectedName by viewModel.connectedName.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
+    val customScanPort by viewModel.customScanPort.collectAsState()
     val packages by viewModel.packages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val actionLog by viewModel.actionLog.collectAsState()
     val snackbarMsg by viewModel.snackbar.collectAsState()
+    val pairingQrPayload by viewModel.pairingQrPayload.collectAsState()
+    val pairingCode by viewModel.pairingCode.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showActionLogSheet by remember { mutableStateOf(false) }
+    var showPairingDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
 
     // Manual connection inputs
     var manualIp by remember { mutableStateOf("") }
     var manualPort by remember { mutableStateOf("5555") }
+
+    // Dynamic scan port input
+    var portInput by remember { mutableStateOf(customScanPort.toString()) }
 
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
@@ -78,7 +89,7 @@ fun WirelessScreen(
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                if (isConnected) "Connected over Wi-Fi" else "Not Connected",
+                                if (isConnected) "Connected over Wi-Fi" else "mDNS Active · Not Connected",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -106,6 +117,45 @@ fun WirelessScreen(
                         }
                         IconButton(onClick = { viewModel.disconnect() }) {
                             Icon(Icons.Default.LinkOff, contentDescription = "Disconnect", tint = TierUnsafe)
+                        }
+                    } else {
+                        IconButton(onClick = { showPairingDialog = true }) {
+                            Icon(Icons.Default.QrCode2, contentDescription = "Pair Device")
+                        }
+                    }
+
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Pair Device (QR/PIN)") },
+                                onClick = {
+                                    showMenu = false
+                                    showPairingDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Update UAD Lists") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.updateUadLists()
+                                },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("About") },
+                                onClick = {
+                                    showMenu = false
+                                    showAboutDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
+                            )
                         }
                     }
                 },
@@ -153,28 +203,46 @@ fun WirelessScreen(
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    "Dynamic Network Discovery",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "mDNS continuously listens for Wireless Debugging broadcasts. You can also probe a specific dynamic port across your local Wi-Fi subnet.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            "Network Device Discovery",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            "Probes local Wi-Fi subnet for phones with Wireless Debugging (port 5555).",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Spacer(Modifier.width(8.dp))
+                                    OutlinedTextField(
+                                        value = portInput,
+                                        onValueChange = {
+                                            portInput = it
+                                            it.toIntOrNull()?.let { p -> viewModel.setCustomScanPort(p) }
+                                        },
+                                        label = { Text("Port") },
+                                        placeholder = { Text("5555") },
+                                        modifier = Modifier.width(110.dp),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+
                                     Button(
-                                        onClick = { viewModel.startScan() },
+                                        onClick = {
+                                            val p = portInput.toIntOrNull() ?: 5555
+                                            viewModel.startScan(p)
+                                        },
                                         enabled = !isScanning,
-                                        shape = RoundedCornerShape(12.dp)
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
                                     ) {
                                         if (isScanning) {
                                             CircularProgressIndicator(
@@ -185,8 +253,17 @@ fun WirelessScreen(
                                         } else {
                                             Icon(Icons.Default.Search, contentDescription = null, Modifier.size(18.dp))
                                             Spacer(Modifier.width(6.dp))
-                                            Text("Scan")
+                                            Text("Scan Subnet")
                                         }
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { showPairingDialog = true },
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Pair")
                                     }
                                 }
 
@@ -195,7 +272,7 @@ fun WirelessScreen(
                                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                                         Spacer(Modifier.height(6.dp))
                                         Text(
-                                            "Scanning 254 local IP addresses on port 5555...",
+                                            "Probing 254 subnet hosts on port ${portInput.ifBlank { "5555" }}...",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary
                                         )
@@ -208,17 +285,26 @@ fun WirelessScreen(
 
                         // Results or Setup Guide
                         if (devices.isNotEmpty()) {
-                            Text(
-                                "Found ${devices.size} device(s) on Wi-Fi:",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Discovered Devices (${devices.size}):",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                TextButton(onClick = { viewModel.startScan() }) {
+                                    Text("Re-scan")
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                items(devices) { device ->
+                                items(devices, key = { "${it.host}:${it.port}" }) { device ->
                                     DiscoveredDeviceCard(
                                         device = device,
                                         isLoading = isLoading,
@@ -227,7 +313,6 @@ fun WirelessScreen(
                                 }
                             }
                         } else if (!isScanning) {
-                            // Setup Guide
                             GuideCard(Modifier.weight(1f))
                         }
                     }
@@ -240,12 +325,12 @@ fun WirelessScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            "Connect by IP & Port",
+                            "Connect by IP & Dynamic Port",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Enter the IP address and port displayed under Settings > Developer Options > Wireless debugging on the target phone.",
+                            "Enter the IP address and dynamic port shown under Settings > Developer Options > Wireless debugging on the target phone.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -264,8 +349,8 @@ fun WirelessScreen(
                         OutlinedTextField(
                             value = manualPort,
                             onValueChange = { manualPort = it },
-                            label = { Text("Port (usually 5555 or dynamic)") },
-                            placeholder = { Text("5555") },
+                            label = { Text("Port (shown on Wireless debugging screen)") },
+                            placeholder = { Text("e.g. 41255 or 5555") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -294,6 +379,16 @@ fun WirelessScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Connect to Remote Phone")
                             }
+                        }
+
+                        OutlinedButton(
+                            onClick = { showPairingDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Pair with QR or Pairing Code First")
                         }
 
                         Spacer(Modifier.weight(1f))
@@ -357,6 +452,24 @@ fun WirelessScreen(
                 )
             }
         }
+    }
+
+    // Pairing Dialog (QR and PIN)
+    if (showPairingDialog) {
+        PairingDialog(
+            qrPayload = pairingQrPayload,
+            pairingCode = pairingCode,
+            onRegenerateQr = { viewModel.generateNewPairingCredentials() },
+            onPairWithCode = { h, pPort, code, cPort ->
+                viewModel.pairWithCode(h, pPort, code, cPort)
+            },
+            onDismiss = { showPairingDialog = false }
+        )
+    }
+
+    // About Dialog
+    if (showAboutDialog) {
+        AboutDialog(onDismiss = { showAboutDialog = false })
     }
 
     // Confirmation Dialog before disabling packages on remote phone
@@ -501,9 +614,9 @@ private fun GuideCard(modifier: Modifier = Modifier) {
             val steps = listOf(
                 "1. Connect both phones to the same Wi-Fi network.",
                 "2. On the other phone, go to Settings > Developer Options.",
-                "3. Turn ON 'Wireless debugging' (or 'ADB over Network').",
-                "4. If a prompt appears asking to allow debugging, tap 'Always allow'.",
-                "5. Tap 'Scan' above to auto-discover it, or use the 'Manual Connect' tab to enter its IP & port directly."
+                "3. Turn ON 'Wireless debugging'. Note the IP address and dynamic port shown.",
+                "4. If not paired yet, tap 'Pair device with QR code' or 'Pair device with pairing code' (use the 'Pair' button above).",
+                "5. Tap 'Scan Subnet' to auto-discover it, or use the 'Manual Connect' tab to connect directly."
             )
 
             steps.forEach { step ->

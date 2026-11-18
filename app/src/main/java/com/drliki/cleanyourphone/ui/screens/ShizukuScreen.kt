@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.engine.ShizukuStatus
 import com.drliki.cleanyourphone.model.DevicePackage
+import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.ActionLogContent
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
@@ -35,6 +36,8 @@ fun ShizukuScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showActionLogSheet by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
 
     LaunchedEffect(snackbarMsg) {
@@ -100,6 +103,32 @@ fun ShizukuScreen(
                             }
                         ) {
                             Icon(Icons.Default.History, contentDescription = "Action Log")
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Update UAD Lists") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.updateUadLists()
+                                },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("About") },
+                                onClick = {
+                                    showMenu = false
+                                    showAboutDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
+                            )
                         }
                     }
                 },
@@ -198,7 +227,6 @@ fun ShizukuScreen(
                     }
                 }
                 is ShizukuStatus.Ready -> {
-                    // All good — compact stats row
                     val disabledCount = packages.count { !it.isEnabled }
                     val recommendedCount = packages.count { it.isEnabled && it.tier == com.drliki.cleanyourphone.model.RemovalTier.RECOMMENDED }
                     Surface(
@@ -298,5 +326,10 @@ fun ShizukuScreen(
                 onUndo = { entry -> viewModel.undoAction(entry) }
             )
         }
+    }
+
+    // About Dialog
+    if (showAboutDialog) {
+        AboutDialog(onDismiss = { showAboutDialog = false })
     }
 }

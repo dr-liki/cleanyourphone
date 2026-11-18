@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to publish (e.g. v2.0.0)"
+        description: "Release tag to publish (e.g. v2.1.0)"
         required: false
-        default: "v2.0.0"
+        default: "v2.1.0"
 
 permissions:
   contents: write
@@ -88,7 +88,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME}"
           if [[ ! "$VERSION" =~ ^v ]]; then
-            VERSION="${{ github.event.inputs.release_tag || 'v2.0.0' }}"
+            VERSION="${{ github.event.inputs.release_tag || 'v2.1.0' }}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -127,17 +127,13 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            Rebuilt from scratch with a dual-mode engine and professional Material Design 3 UI/UX:
-
-            ### 🚀 Two Operation Modes
-            1. **Shizuku Mode (This Device)**: On-device zero-root debloater utilizing Shizuku's system binder to safely disable unwanted OEM bloatware, carrier apps, and telemetry services.
-            2. **Wireless Debug Mode (Other Phone)**: Local Wi-Fi subnet scanner to auto-discover and connect to another Android phone with Wireless Debugging enabled, enabling remote package debloating without cables or a PC.
-
-            ### 🛡️ Safeguards & Safety
-            - Powered by **Universal Android Debloater (UAD-ng)** categorization (Recommended, Advanced, Expert, Unsafe).
-            - Non-destructive: Uses `pm disable-user --user 0` instead of uninstall.
-            - Full Reversible Action Log with 1-tap undo.
-            - Hard-locked safeguards protecting critical boot packages, SystemUI, and active launchers.
+            ### 🌟 What's New in v2.1.0
+            - **🎨 Unique Material Design 3 Icon**: Custom-crafted adaptive vector icon with obsidian-sky aesthetics, applied to app launcher and in-app branding.
+            - **📶 Dynamic Port & mDNS Discovery**: Integrated Android `NsdManager` for automatic zero-config discovery of target phones advertising `_adb-tls-connect._tcp` and `_adb._tcp` on local Wi-Fi, capturing their exact dynamic ports.
+            - **🔗 Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
+            - **🔧 Fixed Manual Connect**: Resolved `android/adbkey: open failed: ENOENT` by isolating key generation and storage inside internal app files.
+            - **🔄 Update UAD Lists**: Download the latest community-curated definitions directly from Universal Android Debloater (UAD-ng) on GitHub with one tap.
+            - **ℹ️ Material 3 About Dialog**: Dedicated section displaying app specs, open-source credits, safety philosophy, and repository details.
 
             ### 📦 Downloads
             | File | For |

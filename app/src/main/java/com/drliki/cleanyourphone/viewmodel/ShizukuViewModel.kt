@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = UadRepository(app)
+    val repo = UadRepository(app)
     private val engine = ShizukuEngine()
 
     private val _packages = MutableStateFlow<List<DevicePackage>>(emptyList())
@@ -45,6 +45,20 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _isLoading.value = true
             _packages.value = repo.scanLocalPackages()
+            _isLoading.value = false
+        }
+    }
+
+    fun updateUadLists() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _snackbar.value = "Updating UAD-ng definitions from GitHub..."
+            repo.updateFromGitHub()
+                .onSuccess { count ->
+                    _snackbar.value = "Updated $count package definitions from UAD-ng!"
+                    loadPackages()
+                }
+                .onFailure { _snackbar.value = "Failed to update catalog: ${it.message}" }
             _isLoading.value = false
         }
     }
