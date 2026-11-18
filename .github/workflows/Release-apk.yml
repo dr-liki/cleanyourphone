@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to publish (e.g. v1.0.0)"
+        description: "Release tag to publish (e.g. v2.0.0)"
         required: false
-        default: "v1.0.0"
+        default: "v2.0.0"
 
 permissions:
   contents: write
@@ -47,61 +47,6 @@ jobs:
 
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.9
-
-      - name: Auto-Patch Kotlin Sources (Fix Shizuku newProcess & Multiline String)
-        run: |
-          # Remove any accidentally uploaded duplicate files or root-level .kt files
-          rm -f CleanYourPhoneApp*.kt PrivilegeEngine*.kt
-          find app/src -name "*_2.kt" -delete
-
-          python3 - << 'EOF'
-          import pathlib, re
-
-          # 1. Fix Shizuku.newProcess private access in PrivilegeEngine.kt
-          priv_path = pathlib.Path("app/src/main/java/com/drliki/cleanyourphone/engine/PrivilegeEngine.kt")
-          if priv_path.exists():
-              txt = priv_path.read_text()
-              old_call = 'Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)'
-              new_call = '''(Shizuku::class.java.getDeclaredMethod(
-                  "newProcess",
-                  Array<String>::class.java,
-                  Array<String>::class.java,
-                  String::class.java
-              ).apply { isAccessible = true }.invoke(
-                  null,
-                  arrayOf("sh", "-c", command),
-                  null,
-                  null
-              ) as Process)'''
-              if old_call in txt:
-                  txt = txt.replace(old_call, new_call)
-              else:
-                  # Regex fallback for any Shizuku.newProcess(...) call
-                  txt = re.sub(
-                      r'Shizuku\.newProcess\(([^)]+)\)',
-                      r'(Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java).apply { isAccessible = true }.invoke(null, \1) as Process)',
-                      txt
-                  )
-              priv_path.write_text(txt)
-              print("Patched PrivilegeEngine.kt successfully")
-
-          # 2. Fix broken multiline string in CleanYourPhoneApp.kt
-          ui_path = pathlib.Path("app/src/main/java/com/drliki/cleanyourphone/ui/CleanYourPhoneApp.kt")
-          if ui_path.exists():
-              txt = ui_path.read_text()
-              # Fix literal newline inside double-quoted string before +
-              txt = re.sub(r'("\s*)\n(\s*"\s*\+)', r'\\n"\n\2', txt)
-              txt = txt.replace(
-                  "• System packages are never uninstalled — only disabled with 'pm disable-user --user 0'.\n\"",
-                  "• System packages are never uninstalled — only disabled with 'pm disable-user --user 0'.\\n\""
-              )
-              txt = txt.replace(
-                  "• UAD-ng 'Unsafe' packages and core telephony/SystemUI services are hard-locked.\n\"",
-                  "• UAD-ng 'Unsafe' packages and core telephony/SystemUI services are hard-locked.\\n\""
-              )
-              ui_path.write_text(txt)
-              print("Patched CleanYourPhoneApp.kt successfully")
-          EOF
 
       - name: Prepare Release Keystore (from GitHub Secrets or Auto-Generated Key)
         env:
@@ -143,7 +88,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME}"
           if [[ ! "$VERSION" =~ ^v ]]; then
-            VERSION="${{ github.event.inputs.release_tag || 'v1.0.0' }}"
+            VERSION="${{ github.event.inputs.release_tag || 'v2.0.0' }}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -182,12 +127,22 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            Standalone on-device Android debloater powered by [UAD-ng's `uad_lists.json`](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/main/resources/assets/uad_lists.json) and styled after [TV Slim](https://github.com/jolabs40/TVSlim).
+            Rebuilt from scratch with a dual-mode engine and professional Material Design 3 UI/UX:
+
+            ### 🚀 Two Operation Modes
+            1. **Shizuku Mode (This Device)**: On-device zero-root debloater utilizing Shizuku's system binder to safely disable unwanted OEM bloatware, carrier apps, and telemetry services.
+            2. **Wireless Debug Mode (Other Phone)**: Local Wi-Fi subnet scanner to auto-discover and connect to another Android phone with Wireless Debugging enabled, enabling remote package debloating without cables or a PC.
+
+            ### 🛡️ Safeguards & Safety
+            - Powered by **Universal Android Debloater (UAD-ng)** categorization (Recommended, Advanced, Expert, Unsafe).
+            - Non-destructive: Uses `pm disable-user --user 0` instead of uninstall.
+            - Full Reversible Action Log with 1-tap undo.
+            - Hard-locked safeguards protecting critical boot packages, SystemUI, and active launchers.
 
             ### 📦 Downloads
             | File | For |
             | :--- | :--- |
-            | `CleanYourPhone-${{ steps.package_step.outputs.version }}.apk` | Android 8.0+ (API 26+) phones and tablets. Works with **Shizuku** or **Wireless ADB**. |
+            | `CleanYourPhone-${{ steps.package_step.outputs.version }}.apk` | Android 8.0+ (API 26+) phones and tablets. |
             | `SHA256SUMS.txt` | SHA-256 checksum to verify the downloaded APK. |
 
             ### 🔐 Signing Certificate Verification
