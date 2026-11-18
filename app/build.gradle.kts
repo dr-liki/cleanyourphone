@@ -23,7 +23,7 @@ android {
         applicationId = "com.drliki.cleanyourphone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
+        versionCode = 5
         versionName = "2.3.0"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -32,19 +32,24 @@ android {
         create("release") {
             val envStoreFile = System.getenv("SIGNING_STORE_FILE")
             val propStoreFile = keystoreProperties.getProperty("storeFile")
+            val repoStoreFile = rootProject.file("keystore/release.jks")
             val resolvedFile = when {
-                !envStoreFile.isNullOrBlank() -> File(envStoreFile)
-                !propStoreFile.isNullOrBlank() -> rootProject.file(propStoreFile)
+                !envStoreFile.isNullOrBlank() && File(envStoreFile).exists() -> File(envStoreFile)
+                !propStoreFile.isNullOrBlank() && rootProject.file(propStoreFile).exists() -> rootProject.file(propStoreFile)
+                repoStoreFile.exists() -> repoStoreFile
                 else -> null
             }
             if (resolvedFile != null && resolvedFile.exists()) {
                 storeFile = resolvedFile
                 storePassword = System.getenv("SIGNING_STORE_PASSWORD")
                     ?: keystoreProperties.getProperty("storePassword")
+                    ?: "cleanyourphone2026"
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS")
                     ?: keystoreProperties.getProperty("keyAlias")
+                    ?: "cleanyourphone"
                 keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
                     ?: keystoreProperties.getProperty("keyPassword")
+                    ?: "cleanyourphone2026"
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true

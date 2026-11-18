@@ -48,7 +48,7 @@ jobs:
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.9
 
-      - name: Prepare Release Keystore (from GitHub Secrets or Auto-Generated Key)
+      - name: Prepare Release Keystore (from Repository or Secrets)
         env:
           SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
@@ -63,8 +63,14 @@ jobs:
             echo "SIGNING_STORE_PASSWORD=${SIGNING_STORE_PASSWORD}" >> "$GITHUB_ENV"
             echo "SIGNING_KEY_ALIAS=${SIGNING_KEY_ALIAS}" >> "$GITHUB_ENV"
             echo "SIGNING_KEY_PASSWORD=${SIGNING_KEY_PASSWORD}" >> "$GITHUB_ENV"
+          elif [ -f "$GITHUB_WORKSPACE/keystore/release.jks" ]; then
+            echo "Using permanent repository keystore from keystore/release.jks..."
+            echo "SIGNING_STORE_FILE=$GITHUB_WORKSPACE/keystore/release.jks" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=cleanyourphone2026" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=cleanyourphone" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=cleanyourphone2026" >> "$GITHUB_ENV"
           else
-            echo "Secrets incomplete or not set; generating release keystore with keytool..."
+            echo "Keystore not found; generating fallback release keystore with keytool..."
             keytool -genkeypair -v \
               -keystore "$GITHUB_WORKSPACE/keystore/release.jks" \
               -storetype PKCS12 \
