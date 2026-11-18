@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.drliki.cleanyourphone.R
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
@@ -70,7 +69,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.1.0 · Dual-Engine",
+                        "v2.3.0 · Material 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -103,19 +102,24 @@ fun AboutDialog(onDismiss: () -> Unit) {
                         subtitle = "Uses 'pm disable-user --user 0'. Zero data loss."
                     )
                     AboutFeatureRow(
-                        icon = Icons.Default.WifiTethering,
-                        title = "Cross-Phone Debloating",
-                        subtitle = "Auto-discovers other phones on Wi-Fi via mDNS."
+                        icon = Icons.Default.Devices,
+                        title = "Remembered Device Profiles",
+                        subtitle = "Saves connected phones with modification history."
                     )
                     AboutFeatureRow(
-                        icon = Icons.Default.Lock,
-                        title = "Locked Safeguards",
-                        subtitle = "SystemUI, telephony, and core boot packages protected."
+                        icon = Icons.Default.WifiTethering,
+                        title = "Wireless Discovery & Pairing",
+                        subtitle = "Auto-discovers target phones & pairing services via mDNS."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.Tune,
+                        title = "Advanced App Filtering",
+                        subtitle = "Filter by All, System, User, Disabled, and Removal Tiers."
                     )
                     AboutFeatureRow(
                         icon = Icons.Default.CloudDownload,
-                        title = "Live UAD-ng Lists",
-                        subtitle = "Backed by Universal Android Debloater community."
+                        title = "Customizable Bloat Repositories",
+                        subtitle = "Auto and manual updates backed by UAD-ng."
                     )
                 }
 

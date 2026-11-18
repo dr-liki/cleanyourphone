@@ -21,23 +21,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.model.DiscoveredDevice
+import com.drliki.cleanyourphone.model.SavedDeviceProfile
 import com.drliki.cleanyourphone.ui.components.AboutDialog
-import com.drliki.cleanyourphone.ui.components.ActionLogContent
+import com.drliki.cleanyourphone.ui.components.BadgePill
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
 import com.drliki.cleanyourphone.ui.components.PairingDialog
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 import com.drliki.cleanyourphone.viewmodel.WirelessViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WirelessScreen(
     viewModel: WirelessViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToActionLog: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val connectedName by viewModel.connectedName.collectAsState()
     val devices by viewModel.devices.collectAsState()
+    val savedProfiles by viewModel.savedProfiles.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
     val customScanPort by viewModel.customScanPort.collectAsState()
     val packages by viewModel.packages.collectAsState()
@@ -46,10 +53,10 @@ fun WirelessScreen(
     val snackbarMsg by viewModel.snackbar.collectAsState()
     val pairingQrPayload by viewModel.pairingQrPayload.collectAsState()
     val pairingCode by viewModel.pairingCode.collectAsState()
+    val discoveredPairingService by viewModel.discoveredPairingService.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showActionLogSheet by remember { mutableStateOf(false) }
     var showPairingDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -89,7 +96,7 @@ fun WirelessScreen(
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                if (isConnected) "Connected over Wi-Fi" else "mDNS Active · Not Connected",
+                                if (isConnected) "Connected over Wi-Fi" else "mDNS Active · Ready",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -103,7 +110,7 @@ fun WirelessScreen(
                 },
                 actions = {
                     if (isConnected) {
-                        IconButton(onClick = { showActionLogSheet = true }) {
+                        IconButton(onClick = onNavigateToActionLog) {
                             BadgedBox(
                                 badge = {
                                     val activeUndoCount = actionLog.count { !it.isUndone }
@@ -133,6 +140,14 @@ fun WirelessScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Settings") },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenSettings()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Pair Device (QR/PIN)") },
                                 onClick = {
                                     showMenu = false
@@ -141,12 +156,12 @@ fun WirelessScreen(
                                 leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Update UAD Lists") },
+                                text = { Text("Action Log") },
                                 onClick = {
                                     showMenu = false
-                                    viewModel.updateUadLists()
+                                    onNavigateToActionLog()
                                 },
-                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("About") },
@@ -171,7 +186,7 @@ fun WirelessScreen(
                 .padding(innerPadding)
         ) {
             if (!isConnected) {
-                // Connection Tabs: Scan vs Manual
+                // Connection Tabs: Saved Profiles, Network Scanner, Manual & Pair
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = MaterialTheme.colorScheme.surface
@@ -179,219 +194,278 @@ fun WirelessScreen(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Scan Network") },
-                        icon = { Icon(Icons.Default.WifiFind, contentDescription = null, Modifier.size(18.dp)) }
+                        text = { Text("Saved Profiles (${savedProfiles.size})") },
+                        icon = { Icon(Icons.Default.Devices, contentDescription = null, Modifier.size(18.dp)) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
+                        text = { Text("Scan Network") },
+                        icon = { Icon(Icons.Default.WifiFind, contentDescription = null, Modifier.size(18.dp)) }
+                    )
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
                         text = { Text("Manual Connect") },
                         icon = { Icon(Icons.Default.SettingsEthernet, contentDescription = null, Modifier.size(18.dp)) }
                     )
                 }
 
-                if (selectedTab == 0) {
-                    // ── Network Scanner Tab ──────────────────────────────────
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
+                // Discovered pairing notification banner (if active)
+                discoveredPairingService?.let { pairing ->
+                    Surface(
+                        color = TierRecommended.copy(alpha = 0.12f),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Scan trigger banner
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Dynamic Network Discovery",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "mDNS continuously listens for Wireless Debugging broadcasts. You can also probe a specific dynamic port across your local Wi-Fi subnet.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.CheckCircle, null, tint = TierRecommended, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        "Pairing request detected!",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TierRecommended
+                                    )
+                                    Text(
+                                        "${pairing.serviceName} (${pairing.host}:${pairing.port})",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = { showPairingDialog = true },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Pair Now", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
 
-                                Spacer(Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = portInput,
-                                        onValueChange = {
-                                            portInput = it
-                                            it.toIntOrNull()?.let { p -> viewModel.setCustomScanPort(p) }
-                                        },
-                                        label = { Text("Port") },
-                                        placeholder = { Text("5555") },
-                                        modifier = Modifier.width(110.dp),
-                                        singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        shape = RoundedCornerShape(10.dp)
+                when (selectedTab) {
+                    0 -> {
+                        // ── Tab 0: Saved Device Profiles ─────────────────────────
+                        SavedProfilesContent(
+                            profiles = savedProfiles,
+                            isLoading = isLoading,
+                            onConnect = { viewModel.connectToProfile(it) },
+                            onDelete = { viewModel.deleteProfile(it.id) },
+                            onNewPairing = { showPairingDialog = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    1 -> {
+                        // ── Tab 1: Network Scanner ───────────────────────────────
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        ) {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "Dynamic Network Discovery",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "mDNS continuously listens for Wireless Debugging broadcasts. You can also probe a specific dynamic port across your local Wi-Fi subnet.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
 
-                                    Button(
-                                        onClick = {
-                                            val p = portInput.toIntOrNull() ?: 5555
-                                            viewModel.startScan(p)
-                                        },
-                                        enabled = !isScanning,
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(10.dp)
+                                    Spacer(Modifier.height(12.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        if (isScanning) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                strokeWidth = 2.dp,
-                                                color = MaterialTheme.colorScheme.onPrimary
-                                            )
-                                        } else {
-                                            Icon(Icons.Default.Search, contentDescription = null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("Scan Subnet")
+                                        OutlinedTextField(
+                                            value = portInput,
+                                            onValueChange = {
+                                                portInput = it
+                                                it.toIntOrNull()?.let { p -> viewModel.setCustomScanPort(p) }
+                                            },
+                                            label = { Text("Port") },
+                                            placeholder = { Text("5555") },
+                                            modifier = Modifier.width(110.dp),
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+
+                                        Button(
+                                            onClick = {
+                                                val p = portInput.toIntOrNull() ?: 5555
+                                                viewModel.startScan(p)
+                                            },
+                                            enabled = !isScanning,
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            if (isScanning) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            } else {
+                                                Icon(Icons.Default.Search, contentDescription = null, Modifier.size(18.dp))
+                                                Spacer(Modifier.width(6.dp))
+                                                Text("Scan Subnet")
+                                            }
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { showPairingDialog = true },
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Pair")
                                         }
                                     }
 
-                                    OutlinedButton(
-                                        onClick = { showPairingDialog = true },
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Pair")
+                                    AnimatedVisibility(visible = isScanning) {
+                                        Column(Modifier.padding(top = 12.dp)) {
+                                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                            Spacer(Modifier.height(6.dp))
+                                            Text(
+                                                "Probing 254 subnet hosts on port ${portInput.ifBlank { "5555" }}...",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
                                 }
+                            }
 
-                                AnimatedVisibility(visible = isScanning) {
-                                    Column(Modifier.padding(top = 12.dp)) {
-                                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                        Spacer(Modifier.height(6.dp))
-                                        Text(
-                                            "Probing 254 subnet hosts on port ${portInput.ifBlank { "5555" }}...",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
+                            Spacer(Modifier.height(16.dp))
+
+                            // Results or Guide
+                            if (devices.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Discovered Devices (${devices.size}):",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    TextButton(onClick = { viewModel.startScan() }) {
+                                        Text("Re-scan")
+                                    }
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    items(devices, key = { "${it.host}:${it.port}" }) { device ->
+                                        DiscoveredDeviceCard(
+                                            device = device,
+                                            isLoading = isLoading,
+                                            onConnect = { viewModel.connectTo(device) }
                                         )
                                     }
                                 }
+                            } else if (!isScanning) {
+                                GuideCard(Modifier.weight(1f))
                             }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // Results or Setup Guide
-                        if (devices.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "Discovered Devices (${devices.size}):",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                TextButton(onClick = { viewModel.startScan() }) {
-                                    Text("Re-scan")
-                                }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                items(devices, key = { "${it.host}:${it.port}" }) { device ->
-                                    DiscoveredDeviceCard(
-                                        device = device,
-                                        isLoading = isLoading,
-                                        onConnect = { viewModel.connectTo(device) }
-                                    )
-                                }
-                            }
-                        } else if (!isScanning) {
-                            GuideCard(Modifier.weight(1f))
                         }
                     }
-                } else {
-                    // ── Manual Connect Tab ───────────────────────────────────
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            "Connect by IP & Dynamic Port",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Enter the IP address and dynamic port shown under Settings > Developer Options > Wireless debugging on the target phone.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        OutlinedTextField(
-                            value = manualIp,
-                            onValueChange = { manualIp = it },
-                            label = { Text("Target Phone IP Address") },
-                            placeholder = { Text("e.g. 192.168.1.105") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        OutlinedTextField(
-                            value = manualPort,
-                            onValueChange = { manualPort = it },
-                            label = { Text("Port (shown on Wireless debugging screen)") },
-                            placeholder = { Text("e.g. 41255 or 5555") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        Button(
-                            onClick = {
-                                val p = manualPort.toIntOrNull() ?: 5555
-                                viewModel.connectManual(manualIp.trim(), p)
-                            },
-                            enabled = manualIp.isNotBlank() && !isLoading,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                    2 -> {
+                        // ── Tab 2: Manual Connect ────────────────────────────────
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Connecting...")
-                            } else {
-                                Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Connect to Remote Phone")
+                            Text(
+                                "Connect by IP & Dynamic Port",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Enter the IP address and dynamic port shown under Settings > Developer Options > Wireless debugging on the target phone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            OutlinedTextField(
+                                value = manualIp,
+                                onValueChange = { manualIp = it },
+                                label = { Text("Target Phone IP Address") },
+                                placeholder = { Text("e.g. 192.168.1.105") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = manualPort,
+                                onValueChange = { manualPort = it },
+                                label = { Text("Port (shown on Wireless debugging screen)") },
+                                placeholder = { Text("e.g. 41255 or 5555") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Button(
+                                onClick = {
+                                    val p = manualPort.toIntOrNull() ?: 5555
+                                    viewModel.connectManual(manualIp.trim(), p)
+                                },
+                                enabled = manualIp.isNotBlank() && !isLoading,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Connecting...")
+                                } else {
+                                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Connect to Remote Phone")
+                                }
                             }
-                        }
 
-                        OutlinedButton(
-                            onClick = { showPairingDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Pair with QR or Pairing Code First")
-                        }
+                            OutlinedButton(
+                                onClick = { showPairingDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Pair with QR or Pairing Code First")
+                            }
 
-                        Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             } else {
@@ -454,11 +528,14 @@ fun WirelessScreen(
         }
     }
 
-    // Pairing Dialog (QR and PIN)
+    // Pairing Dialog with auto-discovered fields
     if (showPairingDialog) {
         PairingDialog(
             qrPayload = pairingQrPayload,
             pairingCode = pairingCode,
+            discoveredHost = discoveredPairingService?.host ?: "",
+            discoveredPairingPort = discoveredPairingService?.port ?: 0,
+            discoveredDeviceName = discoveredPairingService?.serviceName ?: "",
             onRegenerateQr = { viewModel.generateNewPairingCredentials() },
             onPairWithCode = { h, pPort, code, cPort ->
                 viewModel.pairWithCode(h, pPort, code, cPort)
@@ -513,16 +590,182 @@ fun WirelessScreen(
             }
         )
     }
+}
 
-    // Action Log Modal Bottom Sheet
-    if (showActionLogSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showActionLogSheet = false }
+// ═════════════════════════════════════════════════════════════════════════════
+//  SavedProfilesContent (v2.3)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SavedProfilesContent(
+    profiles: List<SavedDeviceProfile>,
+    isLoading: Boolean,
+    onConnect: (SavedDeviceProfile) -> Unit,
+    onDelete: (SavedDeviceProfile) -> Unit,
+    onNewPairing: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (profiles.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
         ) {
-            ActionLogContent(
-                entries = actionLog,
-                onUndo = { entry -> viewModel.undoAction(entry) }
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Smartphone,
+                    contentDescription = null,
+                    modifier = Modifier.size(52.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "No Remembered Devices Yet",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Once you connect to or pair with another phone over Wireless Debugging, it will be remembered here with full history and quick reconnection.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onNewPairing, shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pair New Device")
+                }
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Remembered Device Profiles (${profiles.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(onClick = onNewPairing) {
+                        Icon(Icons.Default.Add, contentDescription = null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Pair New")
+                    }
+                }
+            }
+            items(profiles, key = { it.id }) { profile ->
+                SavedDeviceProfileCard(
+                    profile = profile,
+                    isLoading = isLoading,
+                    onConnect = { onConnect(profile) },
+                    onDelete = { onDelete(profile) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedDeviceProfileCard(
+    profile: SavedDeviceProfile,
+    isLoading: Boolean,
+    onConnect: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Smartphone,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            profile.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "${profile.host}:${profile.port}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Remove Profile",
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Profile metadata
+            val dateStr = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(profile.lastConnected))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    BadgePill(
+                        label = "${profile.disabledPackages.size} disabled",
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                    )
+                    BadgePill(
+                        label = "Seen $dateStr",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        bgColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+
+                Button(
+                    onClick = onConnect,
+                    enabled = !isLoading,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Connect", style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }
@@ -615,8 +858,8 @@ private fun GuideCard(modifier: Modifier = Modifier) {
                 "1. Connect both phones to the same Wi-Fi network.",
                 "2. On the other phone, go to Settings > Developer Options.",
                 "3. Turn ON 'Wireless debugging'. Note the IP address and dynamic port shown.",
-                "4. If not paired yet, tap 'Pair device with QR code' or 'Pair device with pairing code' (use the 'Pair' button above).",
-                "5. Tap 'Scan Subnet' to auto-discover it, or use the 'Manual Connect' tab to connect directly."
+                "4. If not paired yet, tap 'Pair device with pairing code' (the app will auto-discover the IP & port!).",
+                "5. Tap 'Scan Subnet' or use 'Saved Profiles' to reconnect instantly."
             )
 
             steps.forEach { step ->

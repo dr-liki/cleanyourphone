@@ -1,6 +1,5 @@
 package com.drliki.cleanyourphone.ui.components
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,20 +21,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.drliki.cleanyourphone.ui.theme.TierRecommended
 
 @Composable
 fun PairingDialog(
     qrPayload: String,
     pairingCode: String,
+    discoveredHost: String = "",
+    discoveredPairingPort: Int = 0,
+    discoveredDeviceName: String = "",
     onRegenerateQr: () -> Unit,
     onPairWithCode: (host: String, pairingPort: Int, code: String, connectPort: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Manual pairing inputs
-    var host by remember { mutableStateOf("") }
-    var pairingPort by remember { mutableStateOf("") }
+    // Pairing inputs initialized with auto-discovered values if present
+    var host by remember(discoveredHost) { mutableStateOf(discoveredHost) }
+    var pairingPort by remember(discoveredPairingPort) {
+        mutableStateOf(if (discoveredPairingPort > 0) discoveredPairingPort.toString() else "")
+    }
     var codeInput by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf("") }
 
@@ -59,9 +64,7 @@ fun PairingDialog(
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
             Column(
@@ -86,7 +89,7 @@ fun PairingDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Tabs: QR vs Pairing Code
+                // Tabs: Pairing Code vs QR
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = MaterialTheme.colorScheme.surface
@@ -108,22 +111,57 @@ fun PairingDialog(
                 Spacer(Modifier.height(16.dp))
 
                 if (selectedTab == 0) {
-                    // ── Tab 1: Pairing Code ──────────────────────────────────
+                    // ── Tab 1: Pairing Code (Auto-Discovery Supported) ───────
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with pairing code'",
-                                modifier = Modifier.padding(10.dp),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        // Auto-discovery notification banner
+                        if (discoveredHost.isNotBlank() && discoveredPairingPort > 0) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = TierRecommended.copy(alpha = 0.12f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = TierRecommended,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            "Auto-Discovered Pairing Service!",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TierRecommended
+                                        )
+                                        Text(
+                                            "${discoveredDeviceName.ifBlank { "Remote Phone" }} ($discoveredHost:$discoveredPairingPort)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with pairing code'.\nIP and port will be auto-filled once discovered.",
+                                    modifier = Modifier.padding(10.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         OutlinedTextField(
@@ -137,7 +175,10 @@ fun PairingDialog(
                             shape = RoundedCornerShape(10.dp)
                         )
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             OutlinedTextField(
                                 value = pairingPort,
                                 onValueChange = { pairingPort = it },
@@ -152,7 +193,7 @@ fun PairingDialog(
                                 value = connectPort,
                                 onValueChange = { connectPort = it },
                                 label = { Text("Connect Port") },
-                                placeholder = { Text("e.g. 41255") },
+                                placeholder = { Text("Optional") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -164,7 +205,7 @@ fun PairingDialog(
                             value = codeInput,
                             onValueChange = { codeInput = it },
                             label = { Text("6-Digit Pairing Code") },
-                            placeholder = { Text("e.g. 834192") },
+                            placeholder = { Text("Shown on other phone dialog") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

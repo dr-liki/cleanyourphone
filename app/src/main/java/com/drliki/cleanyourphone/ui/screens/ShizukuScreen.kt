@@ -15,10 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.engine.ShizukuStatus
-import com.drliki.cleanyourphone.model.DevicePackage
 import com.drliki.cleanyourphone.ui.components.AboutDialog
-import com.drliki.cleanyourphone.ui.components.ActionLogContent
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
+import com.drliki.cleanyourphone.ui.components.SettingsDialog
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.viewmodel.ShizukuViewModel
 
@@ -26,7 +25,9 @@ import com.drliki.cleanyourphone.viewmodel.ShizukuViewModel
 @Composable
 fun ShizukuScreen(
     viewModel: ShizukuViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToActionLog: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val packages by viewModel.packages.collectAsState()
     val status by viewModel.status.collectAsState()
@@ -35,7 +36,6 @@ fun ShizukuScreen(
     val snackbarMsg by viewModel.snackbar.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var showActionLogSheet by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
@@ -93,7 +93,7 @@ fun ShizukuScreen(
                     IconButton(onClick = { viewModel.loadPackages() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                    IconButton(onClick = { showActionLogSheet = true }) {
+                    IconButton(onClick = onNavigateToActionLog) {
                         BadgedBox(
                             badge = {
                                 val activeUndoCount = actionLog.count { !it.isUndone }
@@ -114,12 +114,20 @@ fun ShizukuScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Update UAD Lists") },
+                                text = { Text("Settings") },
                                 onClick = {
                                     showMenu = false
-                                    viewModel.updateUadLists()
+                                    onOpenSettings()
                                 },
-                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Action Log") },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToActionLog()
+                                },
+                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("About") },
@@ -172,7 +180,7 @@ fun ShizukuScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    "Start Shizuku on your phone via Wireless Debugging or PC ADB, then tap Refresh.",
+                                    "Start Shizuku on your phone via Wireless Debugging or PC ADB, then tap Check.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -314,18 +322,6 @@ fun ShizukuScreen(
                 }
             }
         )
-    }
-
-    // Action Log Modal Bottom Sheet
-    if (showActionLogSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showActionLogSheet = false }
-        ) {
-            ActionLogContent(
-                entries = actionLog,
-                onUndo = { entry -> viewModel.undoAction(entry) }
-            )
-        }
     }
 
     // About Dialog

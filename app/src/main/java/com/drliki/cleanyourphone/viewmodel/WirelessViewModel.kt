@@ -3,11 +3,14 @@ package com.drliki.cleanyourphone.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.drliki.cleanyourphone.data.AppSettings
 import com.drliki.cleanyourphone.data.UadRepository
 import com.drliki.cleanyourphone.engine.AdbEngine
+import com.drliki.cleanyourphone.engine.DiscoveredPairingService
 import com.drliki.cleanyourphone.model.ActionLogEntry
 import com.drliki.cleanyourphone.model.DevicePackage
 import com.drliki.cleanyourphone.model.DiscoveredDevice
+import com.drliki.cleanyourphone.model.SavedDeviceProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -16,6 +19,7 @@ import kotlin.random.Random
 class WirelessViewModel(app: Application) : AndroidViewModel(app) {
 
     val repo = UadRepository(app)
+    val settings = AppSettings(app)
     private val engine = AdbEngine(app)
 
     // ── Scan state ───────────────────────────────────────────────────────────
@@ -27,6 +31,10 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _customScanPort = MutableStateFlow(5555)
     val customScanPort = _customScanPort.asStateFlow()
+
+    // ── Saved device profiles (v2.3) ─────────────────────────────────────────
+    private val _savedProfiles = MutableStateFlow<List<SavedDeviceProfile>>(emptyList())
+    val savedProfiles = _savedProfiles.asStateFlow()
 
     // ── Connection state ─────────────────────────────────────────────────────
     private val _isConnected = MutableStateFlow(false)
@@ -55,20 +63,32 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private val _pairingCode = MutableStateFlow("")
     val pairingCode = _pairingCode.asStateFlow()
 
+    private val _discoveredPairingService = MutableStateFlow<DiscoveredPairingService?>(null)
+    val discoveredPairingService = _discoveredPairingService.asStateFlow()
+
     init {
-        // Start background mDNS/NSD service discovery for Android 11+ dynamic ports
+        refreshSavedProfiles()
         startContinuousDiscovery()
         generateNewPairingCredentials()
     }
 
+    fun refreshSavedProfiles() {
+        _savedProfiles.value = settings.getSavedProfiles()
+    }
+
     private fun startContinuousDiscovery() {
-        engine.startNsdDiscovery { device ->
-            val current = _devices.value.toMutableList()
-            if (current.none { it.host == device.host && it.port == device.port }) {
-                current.add(0, device)
-                _devices.value = current
+        engine.startNsdDiscovery(
+            onDeviceFound = { device ->
+                val current = _devices.value.toMutableList()
+                if (current.none { it.host == device.host && it.port == device.port }) {
+                    current.add(0, device)
+                    _devices.value = current
+                }
+            },
+            onPairingServiceFound = { service ->
+                _discoveredPairingService.value = service
             }
-        }
+        )
     }
 
     fun setCustomScanPort(port: Int) {
@@ -91,7 +111,7 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             _devices.value = merged
             _isScanning.value = false
             if (merged.isEmpty()) {
-                _snackbar.value = "No devices found. Try checking Wireless Debugging port on target phone."
+                _snackbar.value = "No devices found. Check Wireless Debugging port on target phone."
             }
         }
     }
@@ -102,13 +122,34 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             engine.connect(device)
                 .onSuccess { msg ->
                     _isConnected.value = true
-                    _connectedName.value = engine.connectedDevice?.name ?: device.host
+                    val deviceName = engine.connectedDevice?.name ?: device.name
+                    _connectedName.value = deviceName
                     _snackbar.value = msg
+
+                    // Persist connected device profile
+                    settings.saveProfile(
+                        SavedDeviceProfile(
+                            name = deviceName,
+                            host = device.host,
+                            port = device.port,
+                            lastConnected = System.currentTimeMillis()
+                        )
+                    )
+                    refreshSavedProfiles()
                     loadRemotePackages()
                 }
                 .onFailure { _snackbar.value = "Connection failed: ${it.message}" }
             _isLoading.value = false
         }
+    }
+
+    fun connectToProfile(profile: SavedDeviceProfile) {
+        connectTo(DiscoveredDevice(profile.host, profile.port, profile.name, profile.name))
+    }
+
+    fun deleteProfile(id: String) {
+        settings.deleteProfile(id)
+        refreshSavedProfiles()
     }
 
     fun connectManual(host: String, port: Int) =
@@ -140,7 +181,16 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _isLoading.value = true
             engine.listPackages()
-                .onSuccess { _packages.value = repo.resolveRemotePackages(it) }
+                .onSuccess { pkgs ->
+                    val resolved = repo.resolveRemotePackages(pkgs)
+                    _packages.value = resolved
+
+                    // Update total count in saved profile
+                    engine.connectedDevice?.let { dev ->
+                        settings.recordDisabledPackages(dev.host, dev.port, emptyList(), pkgs.size)
+                        refreshSavedProfiles()
+                    }
+                }
                 .onFailure { _snackbar.value = "Failed to list packages: ${it.message}" }
             _isLoading.value = false
         }
@@ -168,9 +218,11 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 it.packageName in selected && !it.isSafeguardLocked && it.isEnabled
             }
             var ok = 0
+            val disabledNames = mutableListOf<String>()
             targets.forEach { pkg ->
                 engine.disablePackage(pkg.packageName).onSuccess {
                     ok++
+                    disabledNames.add(pkg.packageName)
                     _actionLog.value = listOf(
                         ActionLogEntry(
                             packageName = pkg.packageName,
@@ -184,6 +236,11 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                         if (it.packageName == pkg.packageName) it.copy(isEnabled = false) else it
                     }
                 }
+            }
+            // Update remembered device profile disabled packages
+            engine.connectedDevice?.let { dev ->
+                settings.recordDisabledPackages(dev.host, dev.port, disabledNames, _packages.value.size)
+                refreshSavedProfiles()
             }
             _snackbar.value = "Disabled $ok package(s) on ${_connectedName.value}"
         }

@@ -49,6 +49,14 @@ enum class PackageCategory(val label: String) {
     }
 }
 
+// ── Filter by App Type (v2.3) ────────────────────────────────────────────────
+enum class AppTypeFilter(val label: String) {
+    ALL("All Apps"),
+    SYSTEM("System Apps"),
+    USER("User Apps"),
+    DISABLED("Disabled Apps")
+}
+
 // ── Package on a device (local or remote) ────────────────────────────────────
 data class DevicePackage(
     val packageName: String,
@@ -68,6 +76,18 @@ data class DiscoveredDevice(
     val port: Int,
     val name: String = "Android Device",
     val model: String = ""
+)
+
+// ── Remembered connected device profile (v2.3) ───────────────────────────────
+@Serializable
+data class SavedDeviceProfile(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val host: String,
+    val port: Int,
+    val lastConnected: Long = System.currentTimeMillis(),
+    val disabledPackages: List<String> = emptyList(),
+    val totalPackagesCount: Int = 0
 )
 
 // ── Reversible action log entry ──────────────────────────────────────────────

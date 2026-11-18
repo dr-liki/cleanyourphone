@@ -20,11 +20,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.drliki.cleanyourphone.R
 import com.drliki.cleanyourphone.engine.ShizukuStatus
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
-import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +30,8 @@ fun ModeSelectScreen(
     shizukuStatus: ShizukuStatus,
     onSelectShizuku: () -> Unit,
     onSelectWireless: () -> Unit,
-    onUpdateUadLists: () -> Unit,
+    onOpenActionLog: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -56,21 +55,17 @@ fun ModeSelectScreen(
                             }
                         }
                         Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "CleanYourPhone",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "v2.1.0 · Dual-Engine Debloater",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            "CleanYourPhone",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenActionLog) {
+                        Icon(Icons.Default.History, contentDescription = "Action Log")
+                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -80,13 +75,23 @@ fun ModeSelectScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Update UAD Lists") },
+                                text = { Text("Settings") },
                                 onClick = {
                                     showMenu = false
-                                    onUpdateUadLists()
+                                    onOpenSettings()
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                                    Icon(Icons.Default.Settings, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Action Log") },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenActionLog()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.History, contentDescription = null)
                                 }
                             )
                             DropdownMenuItem(

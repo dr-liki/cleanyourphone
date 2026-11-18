@@ -17,12 +17,12 @@ import java.net.URL
 
 class UadRepository(private val context: Context) {
 
+    val settings = AppSettings(context)
     private val json = Json { ignoreUnknownKeys = true }
     private var catalog: Map<String, UadEntry> = emptyMap()
 
     companion object {
-        const val UAD_NG_REMOTE_URL =
-            "https://raw.githubusercontent.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/main/resources/assets/uad_lists.json"
+        const val UAD_NG_REMOTE_URL = AppSettings.DEFAULT_UAD_REPO_URL
         private const val CACHE_FILE_NAME = "uad_lists.json"
     }
 
@@ -31,6 +31,15 @@ class UadRepository(private val context: Context) {
 
     suspend fun loadCatalog(): Map<String, UadEntry> = withContext(Dispatchers.IO) {
         if (catalog.isNotEmpty()) return@withContext catalog
+
+        // Check auto-update on launch if configured
+        if (settings.autoUpdateOnLaunch) {
+            val lastUpdate = settings.lastUpdateTime
+            val oneDayMs = 24 * 60 * 60 * 1000L
+            if (System.currentTimeMillis() - lastUpdate > oneDayMs) {
+                runCatching { updateFromGitHub() }
+            }
+        }
 
         // Try local downloaded cache first
         if (cacheFile.exists() && cacheFile.length() > 0) {
@@ -42,14 +51,19 @@ class UadRepository(private val context: Context) {
         }
 
         // Fallback to bundled asset
-        val raw = context.assets.open("uad_lists_seed.json").bufferedReader().use { it.readText() }
-        catalog = json.decodeFromString<Map<String, UadEntry>>(raw)
+        try {
+            val raw = context.assets.open("uad_lists_seed.json").bufferedReader().use { it.readText() }
+            catalog = json.decodeFromString<Map<String, UadEntry>>(raw)
+        } catch (_: Exception) {
+            catalog = emptyMap()
+        }
         catalog
     }
 
-    suspend fun updateFromGitHub(): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun updateFromGitHub(customUrl: String? = null): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = URL(UAD_NG_REMOTE_URL)
+            val targetUrl = customUrl?.ifBlank { null } ?: settings.uadRepoUrl
+            val url = URL(targetUrl)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 12000
                 readTimeout = 15000
@@ -66,6 +80,7 @@ class UadRepository(private val context: Context) {
             // Save to internal storage
             cacheFile.writeText(body)
             catalog = downloaded
+            settings.lastUpdateTime = System.currentTimeMillis()
             downloaded.size
         }
     }

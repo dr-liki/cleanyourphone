@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.1
+# 📱 CleanYourPhone v2.3
 
 **Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
 
@@ -23,23 +23,30 @@
 
 ### 1. 🛡️ This Device (Shizuku Mode)
 - Debloat your phone directly without root access or a PC.
-- Uses Shizuku's privileged system binder to execute commands.
-- Live status detection (Ready, Permission Needed, or Not Running).
-- 1-click batch disabling for safe bloatware, carrier apps, and telemetry services.
+- Uses Shizuku's privileged system binder to execute commands safely.
+- Real-time application icon rendering with high-speed memory caching.
+- Non-destructive package disabling via `pm disable-user --user 0`.
 
 ### 2. 📶 Other Phone (Wireless ADB Mode)
-- **Automatic mDNS / NSD Discovery**: Continuous discovery of other phones advertising `_adb-tls-connect._tcp` and `_adb._tcp` on local Wi-Fi, discovering their exact dynamic ports with zero guesswork.
-- **Dynamic Port Subnet Scanner**: Auto-probes local Wi-Fi subnet across any target port (default 5555 or custom dynamic ports).
+- **Automatic Pairing Discovery**: Listens for Android 11+ `_adb-tls-pairing._tcp` and `_adb-tls-connect._tcp` broadcasts. Automatically populates the target phone's IP and dynamic pairing port so you only have to enter the 6-digit PIN.
+- **Remembered Device Profiles**: Saves connected phones, their last known IP and port, and tracks all packages modified per device profile for instant one-tap reconnection.
+- **Dynamic Port Subnet Scanner**: Probes local Wi-Fi subnet across any target port (default 5555 or custom dynamic ports).
 - **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
-- **Manual Connect**: Connect directly by IP and dynamic port without file permission issues.
+- **Robust RSA Key Pair Generation**: Generates and manages internal 2048-bit RSA keys, resolving `android/adbkey: open failed: ENOENT` permanently.
 - **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
 
 ---
 
-## 🔄 Live UAD-ng Database Updates
+## 🌟 What's New in v2.3
 
-- Sync the latest community-curated definitions directly from the official [Universal Android Debloater (UAD-ng)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation) repository on GitHub with one tap from the menu.
-- Persisted locally in internal app storage with fallback to bundled seed definitions.
+- **🔍 Dual-Row Advanced App Filtering**: Filter packages simultaneously by app type (`All Apps`, `System Apps`, `User Apps`, `Disabled Apps`) and removal tier (`Recommended`, `Advanced`, `Expert`, `Unsafe`).
+- **🖼️ Real Application Icons**: App icons loaded directly from `PackageManager` for local apps, with clean Material 3 avatars for remote packages.
+- **📝 Complete Unrestricted Details**: Displays full app name, full package ID, and full description with no truncation or ellipses.
+- **🏷️ Badges Below Description**: Status (`Disabled`), Tier (`Recommended`, etc.), Type (`System` / `User`), and Safeguard badges are positioned cleanly below the description line.
+- **⚙️ Configurable Bloat Repositories**: Customize the raw JSON repository link for debloat lists, enable automatic background updates on app launch, or trigger manual updates with timestamp tracking.
+- **📜 Full-Page Action Log with Search**: Moved from bottom sheet to a dedicated full-page screen with instantaneous search, active/restored filtering, and one-tap "Restore All".
+- **📱 Remembered Device Profiles**: Separate profiles for each connected phone with connection history and disabled package tracking.
+- **✨ Clean Header Branding**: Removed version numbers and subtitle noise from the header across all screens for a clean MD3 look.
 
 ---
 
@@ -57,16 +64,6 @@ Every package is cross-referenced with the **Universal Android Debloater Next Ge
 - **Non-Destructive:** Packages are disabled with `pm disable-user --user 0`, never uninstalled from `/system`.
 - **Protected Core:** Core packages (`android`, `com.android.systemui`, `com.android.phone`, `com.android.settings`, etc.) can never be disabled.
 - **Reversible Action Log:** Every action is recorded with a single-tap **Undo** button.
-
----
-
-## 🎨 Professional Material Design 3 UI/UX
-
-- Custom-crafted adaptive vector icon with obsidian-sky aesthetics.
-- Dynamic color theming with dark & light mode support.
-- Fast, instant search and filter chips across removal tiers.
-- Selection counter and floating action bar.
-- Dedicated **About Dialog** with open-source credits and license details.
 
 ---
 

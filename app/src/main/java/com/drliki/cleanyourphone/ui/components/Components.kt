@@ -1,62 +1,25 @@
 package com.drliki.cleanyourphone.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Undo
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.model.ActionLogEntry
+import com.drliki.cleanyourphone.model.AppTypeFilter
 import com.drliki.cleanyourphone.model.DevicePackage
 import com.drliki.cleanyourphone.model.RemovalTier
 import com.drliki.cleanyourphone.ui.theme.TierAdvanced
@@ -65,7 +28,7 @@ import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  PackageManagementContent — full package list with search, filters, actions
+//  PackageManagementContent — full package list with dual-row filters & actions
 // ═════════════════════════════════════════════════════════════════════════════
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,17 +41,26 @@ fun PackageManagementContent(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTypeFilter by remember { mutableStateOf(AppTypeFilter.ALL) }
     var selectedTier by remember { mutableStateOf<RemovalTier?>(null) }
     var selectedPkgs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    val filtered = remember(packages, searchQuery, selectedTier) {
+    val filtered = remember(packages, searchQuery, selectedTypeFilter, selectedTier) {
         packages.filter { pkg ->
-            val q = searchQuery.isBlank() ||
+            val matchesQuery = searchQuery.isBlank() ||
                 pkg.packageName.contains(searchQuery, true) ||
                 pkg.appLabel.contains(searchQuery, true) ||
                 pkg.description.contains(searchQuery, true)
-            val t = selectedTier == null || pkg.tier == selectedTier
-            q && t
+
+            val matchesType = when (selectedTypeFilter) {
+                AppTypeFilter.ALL -> true
+                AppTypeFilter.SYSTEM -> pkg.isSystemApp
+                AppTypeFilter.USER -> !pkg.isSystemApp
+                AppTypeFilter.DISABLED -> !pkg.isEnabled
+            }
+
+            val matchesTier = selectedTier == null || pkg.tier == selectedTier
+            matchesQuery && matchesType && matchesTier
         }
     }
 
@@ -97,14 +69,14 @@ fun PackageManagementContent(
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else {
             Column(Modifier.fillMaxSize()) {
-                // ── Search ───────────────────────────────────────────────
+                // ── Search Bar ───────────────────────────────────────────
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search packages\u2026") },
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    placeholder = { Text("Search packages by name or ID\u2026") },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty())
@@ -116,39 +88,88 @@ fun PackageManagementContent(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // ── Tier filters ─────────────────────────────────────────
+                // ── Filter Row 1: App Type (All, System, User, Disabled) ──
                 LazyRow(
-                    Modifier.padding(horizontal = 16.dp),
+                    Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(AppTypeFilter.entries) { filter ->
+                        val count = when (filter) {
+                            AppTypeFilter.ALL -> packages.size
+                            AppTypeFilter.SYSTEM -> packages.count { it.isSystemApp }
+                            AppTypeFilter.USER -> packages.count { !it.isSystemApp }
+                            AppTypeFilter.DISABLED -> packages.count { !it.isEnabled }
+                        }
+                        FilterChip(
+                            selected = selectedTypeFilter == filter,
+                            onClick = { selectedTypeFilter = filter },
+                            label = { Text("${filter.label} ($count)") }
+                        )
+                    }
+                }
+
+                // ── Filter Row 2: Removal Tiers (Recommended, Advanced, etc.) ─
+                LazyRow(
+                    Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         FilterChip(
                             selected = selectedTier == null,
                             onClick = { selectedTier = null },
-                            label = { Text("All (${packages.size})") }
+                            label = { Text("All Tiers") }
                         )
                     }
                     items(RemovalTier.entries.filter { it != RemovalTier.UNLISTED }) { tier ->
+                        val count = packages.count { it.tier == tier }
                         FilterChip(
                             selected = selectedTier == tier,
                             onClick = { selectedTier = if (selectedTier == tier) null else tier },
-                            label = { Text(tier.label) }
+                            label = { Text("${tier.label} ($count)") }
                         )
                     }
                 }
 
-                Text(
-                    "${filtered.size} packages",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // ── Result header & quick selection ──────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "${filtered.size} packages shown",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    val selectableFiltered = filtered.filter { it.isEnabled && !it.isSafeguardLocked }
+                    if (selectableFiltered.isNotEmpty()) {
+                        val allFilteredSelected = selectableFiltered.all { it.packageName in selectedPkgs }
+                        TextButton(
+                            onClick = {
+                                selectedPkgs = if (allFilteredSelected) {
+                                    selectedPkgs - selectableFiltered.map { it.packageName }.toSet()
+                                } else {
+                                    selectedPkgs + selectableFiltered.map { it.packageName }.toSet()
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                if (allFilteredSelected) "Deselect All" else "Select All",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
 
                 // ── Package list ─────────────────────────────────────────
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filtered, key = { it.packageName }) { pkg ->
                         PackageCard(
@@ -180,7 +201,7 @@ fun PackageManagementContent(
 
                 // ── Bottom action bar ────────────────────────────────────
                 AnimatedVisibility(visible = selectedPkgs.isNotEmpty()) {
-                    Surface(tonalElevation = 3.dp) {
+                    Surface(tonalElevation = 4.dp) {
                         Row(
                             Modifier.fillMaxWidth().padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -188,8 +209,9 @@ fun PackageManagementContent(
                         ) {
                             Column {
                                 Text(
-                                    "${selectedPkgs.size} selected",
-                                    style = MaterialTheme.typography.titleSmall
+                                    "${selectedPkgs.size} package(s) selected",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     "pm disable-user --user 0",
@@ -198,13 +220,16 @@ fun PackageManagementContent(
                                     fontFamily = FontFamily.Monospace
                                 )
                             }
-                            Button(onClick = {
-                                onDisablePackages(selectedPkgs.toSet())
-                                selectedPkgs = emptySet()
-                            }) {
+                            Button(
+                                onClick = {
+                                    onDisablePackages(selectedPkgs.toSet())
+                                    selectedPkgs = emptySet()
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
                                 Icon(Icons.Default.Block, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Disable")
+                                Text("Disable Selected")
                             }
                         }
                     }
@@ -215,7 +240,7 @@ fun PackageManagementContent(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  PackageCard
+//  PackageCard — Displays app icon, full names, full description, and badges below
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -225,81 +250,142 @@ fun PackageCard(
     onToggle: () -> Unit,
     onEnable: () -> Unit
 ) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-            if (pkg.isSafeguardLocked) {
-                Icon(
-                    Icons.Default.Lock,
-                    "Locked",
-                    modifier = Modifier.padding(12.dp).size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else if (pkg.isEnabled) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onToggle() }
-                )
-            } else {
-                Icon(
-                    Icons.Default.CheckCircleOutline,
-                    "Disabled",
-                    modifier = Modifier.padding(12.dp).size(24.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Selection checkbox or status icon
+            Box(modifier = Modifier.padding(end = 10.dp, top = 2.dp)) {
+                if (pkg.isSafeguardLocked) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = "Locked Safeguard",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                } else if (pkg.isEnabled) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggle() }
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.CheckCircleOutline,
+                        contentDescription = "Disabled",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
 
-            Column(Modifier.weight(1f)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        pkg.appLabel,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    TierBadge(pkg)
-                }
+            // Real App Icon (from PackageManager or MD3 glyph)
+            AppIconView(
+                packageName = pkg.packageName,
+                appLabel = pkg.appLabel,
+                modifier = Modifier.padding(end = 12.dp, top = 2.dp),
+                size = 46.dp
+            )
 
+            // Package Details Column
+            Column(Modifier.weight(1f)) {
+                // Full app name (no ellipsis, no maxLines constraint)
                 Text(
-                    pkg.packageName,
+                    text = pkg.appLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(Modifier.height(2.dp))
+
+                // Full package name (no ellipsis, monospaced font)
+                Text(
+                    text = pkg.packageName,
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
 
+                // Full description (no ellipsis, no maxLines constraint)
                 Text(
-                    pkg.description,
+                    text = pkg.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                pkg.safeguardReason?.let {
-                    Spacer(Modifier.height(2.dp))
+                // ── Package tags/badges moved BELOW the description line ──
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Status Badge (Disabled or Active)
+                    if (!pkg.isEnabled) {
+                        BadgePill(
+                            label = "Disabled",
+                            color = MaterialTheme.colorScheme.outline,
+                            bgColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+
+                    // Removal Tier Badge
+                    TierBadgePill(pkg.tier)
+
+                    // System / User App Badge
+                    if (pkg.isSystemApp) {
+                        BadgePill(
+                            label = "System",
+                            color = MaterialTheme.colorScheme.secondary,
+                            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        BadgePill(
+                            label = "User",
+                            color = MaterialTheme.colorScheme.tertiary,
+                            bgColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                        )
+                    }
+
+                    // Safeguard Lock Badge
+                    if (pkg.isSafeguardLocked) {
+                        BadgePill(
+                            label = "Locked",
+                            color = TierUnsafe,
+                            bgColor = TierUnsafe.copy(alpha = 0.12f)
+                        )
+                    }
+                }
+
+                // Safeguard explanation if present
+                pkg.safeguardReason?.let { reason ->
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "\uD83E\uDDF1 $it",
+                        text = "🔒 $reason",
                         style = MaterialTheme.typography.labelSmall,
                         color = TierUnsafe,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
+                // Quick Enable button if currently disabled
                 if (!pkg.isEnabled && !pkg.isSafeguardLocked) {
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(onClick = onEnable, Modifier.height(32.dp)) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onEnable,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
                         Icon(Icons.Default.PlayArrow, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Enable", style = MaterialTheme.typography.labelSmall)
+                        Text("Re-enable", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -308,38 +394,43 @@ fun PackageCard(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  TierBadge
+//  BadgePills
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-fun TierBadge(pkg: DevicePackage) {
-    val (label, color) = when {
-        pkg.isSafeguardLocked -> "Locked" to TierUnsafe
-        !pkg.isEnabled -> "Disabled" to MaterialTheme.colorScheme.outline
-        else -> pkg.tier.label to when (pkg.tier) {
-            RemovalTier.RECOMMENDED -> TierRecommended
-            RemovalTier.ADVANCED -> TierAdvanced
-            RemovalTier.EXPERT -> TierExpert
-            RemovalTier.UNSAFE -> TierUnsafe
-            RemovalTier.UNLISTED -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-    }
+fun BadgePill(
+    label: String,
+    color: Color,
+    bgColor: Color
+) {
     Surface(
-        color = color.copy(alpha = 0.14f),
+        color = bgColor,
         shape = RoundedCornerShape(6.dp)
     ) {
         Text(
-            label,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            text = label,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
             color = color,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
+@Composable
+fun TierBadgePill(tier: RemovalTier) {
+    val (color, bgColor) = when (tier) {
+        RemovalTier.RECOMMENDED -> TierRecommended to TierRecommended.copy(alpha = 0.14f)
+        RemovalTier.ADVANCED -> TierAdvanced to TierAdvanced.copy(alpha = 0.14f)
+        RemovalTier.EXPERT -> TierExpert to TierExpert.copy(alpha = 0.14f)
+        RemovalTier.UNSAFE -> TierUnsafe to TierUnsafe.copy(alpha = 0.14f)
+        RemovalTier.UNLISTED -> MaterialTheme.colorScheme.onSurfaceVariant to MaterialTheme.colorScheme.surfaceVariant
+    }
+    BadgePill(label = tier.label, color = color, bgColor = bgColor)
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
-//  ActionLogContent — for ModalBottomSheet
+//  ActionLogContent — compact view for quick review
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -348,12 +439,12 @@ fun ActionLogContent(
     onUndo: (ActionLogEntry) -> Unit
 ) {
     Column(Modifier.padding(16.dp)) {
-        Text("Action Log", style = MaterialTheme.typography.titleLarge)
+        Text("Action History", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
 
         if (entries.isEmpty()) {
             Text(
-                "No actions recorded yet. Disabled packages will appear here with undo capability.",
+                "No actions recorded yet. Disabled packages will appear here with one-tap undo capability.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -371,7 +462,8 @@ fun ActionLogContent(
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     entry.appLabel,
-                                    style = MaterialTheme.typography.titleSmall
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     entry.packageName,
@@ -386,23 +478,21 @@ fun ActionLogContent(
                                 )
                             }
                             if (!entry.isUndone) {
-                                IconButton(onClick = { onUndo(entry) }) {
-                                    Icon(Icons.Default.Undo, "Undo")
+                                Button(
+                                    onClick = { onUndo(entry) },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Undo, null, Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Undo", style = MaterialTheme.typography.labelSmall)
                                 }
                             } else {
-                                Box(
-                                    Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(TierRecommended.copy(alpha = 0.14f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        "Restored",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = TierRecommended,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                BadgePill(
+                                    label = "Restored",
+                                    color = TierRecommended,
+                                    bgColor = TierRecommended.copy(alpha = 0.14f)
+                                )
                             }
                         }
                     }

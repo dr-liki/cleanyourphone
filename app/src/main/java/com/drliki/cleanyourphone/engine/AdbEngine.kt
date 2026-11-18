@@ -17,6 +17,12 @@ import java.net.NetworkInterface
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 
+data class DiscoveredPairingService(
+    val host: String,
+    val port: Int,
+    val serviceName: String
+)
+
 class AdbEngine(private val context: Context) {
 
     private var connection: Dadb? = null
@@ -26,32 +32,37 @@ class AdbEngine(private val context: Context) {
     val isConnected: Boolean get() = connection != null
 
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
-    private var activeDiscoveryListener: NsdManager.DiscoveryListener? = null
+    private var connectDiscoveryListener: NsdManager.DiscoveryListener? = null
+    private var pairingDiscoveryListener: NsdManager.DiscoveryListener? = null
     private val nsdDiscovered = ConcurrentHashMap<String, DiscoveredDevice>()
 
     init {
-        // Ensure user.home is set to internal writable storage so dadb key lookup never fails with ENOENT
-        ensureAdbKeyDirectory()
+        // Ensure user.home points to internal writable storage across all threads
+        System.setProperty("user.home", context.filesDir.absolutePath)
+        // Pre-generate ADB RSA 2048 keypair in internal storage so it's instantly ready
+        getOrCreateKeyPair()
     }
 
-    private fun ensureAdbKeyDirectory(): File {
-        val homeDir = context.filesDir
-        System.setProperty("user.home", homeDir.absolutePath)
-        val dotAndroid = File(homeDir, ".android")
-        if (!dotAndroid.exists()) {
-            dotAndroid.mkdirs()
-        }
-        return dotAndroid
-    }
-
-    private fun getKeyPair(): AdbKeyPair? {
-        val dotAndroid = ensureAdbKeyDirectory()
+    /**
+     * Programmatically ensures valid RSA 2048-bit ADB private/public keys exist in app-private storage.
+     * Prevents "android/adbkey: open failed: ENOENT" caused by missing keys or unmapped user.home.
+     */
+    private fun getOrCreateKeyPair(): AdbKeyPair {
+        val dotAndroid = File(context.filesDir, ".android").apply { if (!exists()) mkdirs() }
         val priv = File(dotAndroid, "adbkey")
         val pub = File(dotAndroid, "adbkey.pub")
-        if (priv.exists() && pub.exists() && priv.length() > 0) {
-            return runCatching { AdbKeyPair.read(priv, pub) }.getOrNull()
+
+        if (!priv.exists() || !pub.exists() || priv.length() == 0L) {
+            AdbKeyPair.generate(priv, pub)
         }
-        return null
+
+        return AdbKeyPair.read(priv, pub)
+    }
+
+    // ── Connection creation ──────────────────────────────────────────────────
+    private fun createDadb(host: String, port: Int): Dadb {
+        val keyPair = getOrCreateKeyPair()
+        return Dadb.create(host, port, keyPair)
     }
 
     // ── Network scanning (Dynamic port & subnet scan) ────────────────────────
@@ -88,12 +99,16 @@ class AdbEngine(private val context: Context) {
             found.distinctBy { "${it.host}:${it.port}" }
         }
 
-    // ── mDNS / NSD Service Discovery for Wireless Debugging (Dynamic Ports) ──
-    fun startNsdDiscovery(onDeviceFound: (DiscoveredDevice) -> Unit) {
+    // ── mDNS / NSD Service Discovery for Wireless Debugging ──────────────────
+    fun startNsdDiscovery(
+        onDeviceFound: (DiscoveredDevice) -> Unit,
+        onPairingServiceFound: ((DiscoveredPairingService) -> Unit)? = null
+    ) {
         stopNsdDiscovery()
         val manager = nsdManager ?: return
 
-        activeDiscoveryListener = object : NsdManager.DiscoveryListener {
+        // 1. Listen for connectable wireless debugging services (_adb-tls-connect._tcp)
+        connectDiscoveryListener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) {}
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
@@ -119,35 +134,62 @@ class AdbEngine(private val context: Context) {
 
             override fun onDiscoveryStopped(serviceType: String) {}
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                stopNsdDiscovery()
+                try { manager.stopServiceDiscovery(this) } catch (_: Exception) { }
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
         }
 
         try {
-            // Android 11+ Wireless Debugging service types
-            manager.discoverServices("_adb-tls-connect._tcp", NsdManager.PROTOCOL_DNS_SD, activeDiscoveryListener)
+            manager.discoverServices("_adb-tls-connect._tcp", NsdManager.PROTOCOL_DNS_SD, connectDiscoveryListener)
         } catch (_: Exception) { }
+
+        // 2. Listen for active pairing services (_adb-tls-pairing._tcp) if callback provided
+        if (onPairingServiceFound != null) {
+            pairingDiscoveryListener = object : NsdManager.DiscoveryListener {
+                override fun onDiscoveryStarted(serviceType: String) {}
+
+                override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+                    try {
+                        manager.resolveService(serviceInfo, object : NsdManager.ResolveListener {
+                            override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
+
+                            override fun onServiceResolved(resolved: NsdServiceInfo) {
+                                val host = resolved.host?.hostAddress ?: return
+                                val port = resolved.port
+                                val name = resolved.serviceName ?: "Pairing Phone"
+                                onPairingServiceFound(DiscoveredPairingService(host, port, name))
+                            }
+                        })
+                    } catch (_: Exception) { }
+                }
+
+                override fun onServiceLost(serviceInfo: NsdServiceInfo) {}
+                override fun onDiscoveryStopped(serviceType: String) {}
+                override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                    try { manager.stopServiceDiscovery(this) } catch (_: Exception) { }
+                }
+                override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
+            }
+
+            try {
+                manager.discoverServices("_adb-tls-pairing._tcp", NsdManager.PROTOCOL_DNS_SD, pairingDiscoveryListener)
+            } catch (_: Exception) { }
+        }
     }
 
     fun stopNsdDiscovery() {
-        activeDiscoveryListener?.let {
+        connectDiscoveryListener?.let {
             try { nsdManager?.stopServiceDiscovery(it) } catch (_: Exception) { }
         }
-        activeDiscoveryListener = null
+        connectDiscoveryListener = null
+
+        pairingDiscoveryListener?.let {
+            try { nsdManager?.stopServiceDiscovery(it) } catch (_: Exception) { }
+        }
+        pairingDiscoveryListener = null
     }
 
     // ── Connection ───────────────────────────────────────────────────────────
-    private fun createDadb(host: String, port: Int): Dadb {
-        ensureAdbKeyDirectory()
-        val keyPair = getKeyPair()
-        return if (keyPair != null) {
-            Dadb.create(host, port, keyPair)
-        } else {
-            Dadb.create(host, port)
-        }
-    }
-
     suspend fun connect(device: DiscoveredDevice): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -156,7 +198,7 @@ class AdbEngine(private val context: Context) {
                 val resp = adb.shell("echo ok")
                 if (!resp.output.contains("ok")) {
                     adb.close()
-                    throw IllegalStateException("ADB handshake failed on ${device.host}:${device.port}")
+                    throw IllegalStateException("ADB handshake failed on ${device.host}:${device.port}. Check prompt on target phone.")
                 }
                 connection = adb
                 connectedDevice = device
