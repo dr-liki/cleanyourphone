@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to publish (e.g. v2.3.0)"
+        description: "Release tag to publish (e.g. v2.4.0)"
         required: false
-        default: "v2.3.0"
+        default: "v2.4.0"
 
 permissions:
   contents: write
@@ -133,14 +133,12 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            ### 🌟 What's New in v2.3.0
-            - **🔍 Advanced App Filters**: Added `All Apps`, `System Apps`, `User Apps`, and `Disabled Apps` alongside removal tiers (`Recommended`, `Advanced`, `Expert`, `Unsafe`).
-            - **🖼️ App Icons & Unrestricted Package Details**: Real application icons rendered for local apps; full app name, full package ID, and full description shown without ellipses or truncation.
-            - **🏷️ Repositioned Package Badges**: All status, tier, system/user, and safeguard badges cleanly moved below the description line.
-            - **⚙️ Repository & Update Settings**: Configurable bloat list repository URL with "Reset to Default", automatic background updates on launch, and manual "Update Now" controls.
-            - **📜 Full-Page Action Log with Search**: Moved from bottom sheet to dedicated full-page screen with instantaneous search, active/restored filtering, and one-tap "Restore All".
-            - **📶 Wireless ADB Fixes & Uniform UI/UX**: Resolved `android/adbkey: open failed: ENOENT` completely via internal RSA key generation; auto-discovery of target IP & pairing ports via mDNS (`_adb-tls-pairing._tcp`); remembered device profiles for effortless one-tap reconnection and modification history.
-            - **✨ Clean Header Branding**: Removed version and subtitle clutter from the top app bar for a focused, modern Material Design 3 experience.
+            ### 🌟 What's New in v2.4.0
+            - **🎨 Material Theme Launcher Icon**: Added `<monochrome>` adaptive launcher icon vector supporting Android 13+ Material You dynamic color theming across all compliant launchers.
+            - **📱 Repositioned Selection & Status Controls**: Checkbox selection, safeguard lock icon, and disabled checkmark badge are now cleanly centered directly beneath the app icon on each package card.
+            - **🔄 Versatile App Sorting**: Introduced quick-sort dropdown options: Sort by Name (A→Z, Z→A), Package ID (A→Z), Safety Tier (Safest first), and Status (Disabled first, Enabled first).
+            - **📐 Uniform Wireless Controls & Grid Sizing**: Port input, Scan Subnet button, and Pair button now share identical 56dp height, 12dp rounded corners, and equal grid proportions. Manual Connect and Pairing dialog boxes now also feature equal-sized side-by-side Pairing Port and Connect Port inputs.
+            - **✨ Polished Material Design 3 UI/UX**: Unified component spacing, touch targets, elevation, and typography across This Device (Shizuku), Wireless ADB, Settings, and Action Log.
 
             ### 📦 Downloads
             | File | For |

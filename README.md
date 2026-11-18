@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.3
+# 📱 CleanYourPhone v2.4
 
 **Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
 
@@ -34,6 +34,16 @@
 - **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
 - **Robust RSA Key Pair Generation**: Generates and manages internal 2048-bit RSA keys, resolving `android/adbkey: open failed: ENOENT` permanently.
 - **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
+
+---
+
+## 🌟 What's New in v2.4
+
+- **🎨 Material Theme Launcher Icon**: Added `<monochrome>` adaptive launcher icon vector supporting Android 13+ Material You dynamic color theming across all compliant launchers.
+- **📱 Repositioned Selection & Status Controls**: Checkbox selection, safeguard lock icon, and disabled checkmark badge are now cleanly centered directly beneath the app icon on each package card.
+- **🔄 Versatile App Sorting**: Introduced quick-sort dropdown options: Sort by Name (A→Z, Z→A), Package ID (A→Z), Safety Tier (Safest first), and Status (Disabled first, Enabled first).
+- **📐 Uniform Wireless Controls & Grid Sizing**: Port input, Scan Subnet button, and Pair button now share identical 56dp height, 12dp rounded corners, and equal grid proportions. Manual Connect and Pairing dialog boxes now also feature equal-sized side-by-side Pairing Port and Connect Port inputs.
+- **✨ Polished Material Design 3 UI/UX**: Unified component spacing, touch targets, elevation, and typography across This Device (Shizuku), Wireless ADB, Settings, and Action Log.
 
 ---
 

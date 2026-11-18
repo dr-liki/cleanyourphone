@@ -28,6 +28,19 @@ import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  AppSortOption — user selectable sorting modes
+// ═════════════════════════════════════════════════════════════════════════════
+
+enum class AppSortOption(val label: String, val shortLabel: String) {
+    NAME_ASC("App Name (A → Z)", "Name A-Z"),
+    NAME_DESC("App Name (Z → A)", "Name Z-A"),
+    PACKAGE_ASC("Package ID (A → Z)", "Pkg A-Z"),
+    TIER_SAFETY("Safety Tier (Safest first)", "Safety"),
+    STATUS_DISABLED("Disabled first", "Disabled"),
+    STATUS_ENABLED("Enabled first", "Enabled")
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  PackageManagementContent — full package list with dual-row filters & actions
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -43,6 +56,8 @@ fun PackageManagementContent(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf(AppTypeFilter.ALL) }
     var selectedTier by remember { mutableStateOf<RemovalTier?>(null) }
+    var selectedSort by remember { mutableStateOf(AppSortOption.NAME_ASC) }
+    var showSortMenu by remember { mutableStateOf(false) }
     var selectedPkgs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     val filtered = remember(packages, searchQuery, selectedTypeFilter, selectedTier) {
@@ -61,6 +76,37 @@ fun PackageManagementContent(
 
             val matchesTier = selectedTier == null || pkg.tier == selectedTier
             matchesQuery && matchesType && matchesTier
+        }
+    }
+
+    val sortedPackages = remember(filtered, selectedSort) {
+        when (selectedSort) {
+            AppSortOption.NAME_ASC -> filtered.sortedWith(
+                compareBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+            )
+            AppSortOption.NAME_DESC -> filtered.sortedWith(
+                compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+            )
+            AppSortOption.PACKAGE_ASC -> filtered.sortedBy { it.packageName.lowercase() }
+            AppSortOption.TIER_SAFETY -> filtered.sortedWith(
+                compareBy<DevicePackage> {
+                    when (it.tier) {
+                        RemovalTier.RECOMMENDED -> 0
+                        RemovalTier.ADVANCED -> 1
+                        RemovalTier.EXPERT -> 2
+                        RemovalTier.UNSAFE -> 3
+                        RemovalTier.UNLISTED -> 4
+                    }
+                }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+            )
+            AppSortOption.STATUS_DISABLED -> filtered.sortedWith(
+                compareBy<DevicePackage> { if (!it.isEnabled) 0 else 1 }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+            )
+            AppSortOption.STATUS_ENABLED -> filtered.sortedWith(
+                compareBy<DevicePackage> { if (it.isEnabled) 0 else 1 }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+            )
         }
     }
 
@@ -139,28 +185,94 @@ fun PackageManagementContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "${filtered.size} packages shown",
+                        "${sortedPackages.size} packages shown",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    val selectableFiltered = filtered.filter { it.isEnabled && !it.isSafeguardLocked }
-                    if (selectableFiltered.isNotEmpty()) {
-                        val allFilteredSelected = selectableFiltered.all { it.packageName in selectedPkgs }
-                        TextButton(
-                            onClick = {
-                                selectedPkgs = if (allFilteredSelected) {
-                                    selectedPkgs - selectableFiltered.map { it.packageName }.toSet()
-                                } else {
-                                    selectedPkgs + selectableFiltered.map { it.packageName }.toSet()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Sort Options Dropdown Menu Button
+                        Box {
+                            OutlinedButton(
+                                onClick = { showSortMenu = true },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(32.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Sort,
+                                    contentDescription = "Sort Options",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    selectedSort.shortLabel,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                Text(
+                                    "Sort Packages",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                HorizontalDivider()
+                                AppSortOption.entries.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (selectedSort == option) {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                } else {
+                                                    Spacer(Modifier.width(24.dp))
+                                                }
+                                                Text(
+                                                    option.label,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = if (selectedSort == option) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedSort = option
+                                            showSortMenu = false
+                                        }
+                                    )
                                 }
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                if (allFilteredSelected) "Deselect All" else "Select All",
-                                style = MaterialTheme.typography.labelSmall
-                            )
+                            }
+                        }
+
+                        val selectableFiltered = sortedPackages.filter { it.isEnabled && !it.isSafeguardLocked }
+                        if (selectableFiltered.isNotEmpty()) {
+                            val allFilteredSelected = selectableFiltered.all { it.packageName in selectedPkgs }
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(
+                                onClick = {
+                                    selectedPkgs = if (allFilteredSelected) {
+                                        selectedPkgs - selectableFiltered.map { it.packageName }.toSet()
+                                    } else {
+                                        selectedPkgs + selectableFiltered.map { it.packageName }.toSet()
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    if (allFilteredSelected) "Deselect All" else "Select All",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
@@ -171,7 +283,7 @@ fun PackageManagementContent(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filtered, key = { it.packageName }) { pkg ->
+                    items(sortedPackages, key = { it.packageName }) { pkg ->
                         PackageCard(
                             pkg = pkg,
                             isSelected = pkg.packageName in selectedPkgs,
@@ -183,7 +295,7 @@ fun PackageManagementContent(
                             onEnable = { onEnablePackage(pkg.packageName) }
                         )
                     }
-                    if (filtered.isEmpty()) {
+                    if (sortedPackages.isEmpty()) {
                         item {
                             Box(
                                 Modifier.fillMaxWidth().padding(48.dp),
@@ -258,37 +370,49 @@ fun PackageCard(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Selection checkbox or status icon
-            Box(modifier = Modifier.padding(end = 10.dp, top = 2.dp)) {
-                if (pkg.isSafeguardLocked) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = "Locked Safeguard",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                } else if (pkg.isEnabled) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { onToggle() }
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.CheckCircleOutline,
-                        contentDescription = "Disabled",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
+            // Left Column: App Icon at top, with selection checkbox / locked icon / disabled tick icon below it
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top,
+                modifier = Modifier.padding(end = 12.dp)
+            ) {
+                // Real App Icon (from PackageManager or MD3 glyph)
+                AppIconView(
+                    packageName = pkg.packageName,
+                    appLabel = pkg.appLabel,
+                    size = 46.dp
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                // Selection checkbox or status icon directly below the app icon
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    if (pkg.isSafeguardLocked) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Locked Safeguard",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    } else if (pkg.isEnabled) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { onToggle() },
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Disabled",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
-
-            // Real App Icon (from PackageManager or MD3 glyph)
-            AppIconView(
-                packageName = pkg.packageName,
-                appLabel = pkg.appLabel,
-                modifier = Modifier.padding(end = 12.dp, top = 2.dp),
-                size = 46.dp
-            )
 
             // Package Details Column
             Column(Modifier.weight(1f)) {

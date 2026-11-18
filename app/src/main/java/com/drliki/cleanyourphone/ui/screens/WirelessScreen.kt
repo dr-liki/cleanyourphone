@@ -65,6 +65,8 @@ fun WirelessScreen(
     // Manual connection inputs
     var manualIp by remember { mutableStateOf("") }
     var manualPort by remember { mutableStateOf("5555") }
+    var manualPairingPort by remember { mutableStateOf("") }
+    var manualPairingCode by remember { mutableStateOf("") }
 
     // Dynamic scan port input
     var portInput by remember { mutableStateOf(customScanPort.toString()) }
@@ -293,28 +295,35 @@ fun WirelessScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
+                                        // Box 1: Port Input (Uniform Size)
                                         OutlinedTextField(
                                             value = portInput,
                                             onValueChange = {
                                                 portInput = it
                                                 it.toIntOrNull()?.let { p -> viewModel.setCustomScanPort(p) }
                                             },
-                                            label = { Text("Port") },
+                                            label = { Text("Port", maxLines = 1) },
                                             placeholder = { Text("5555") },
-                                            modifier = Modifier.width(110.dp),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
                                             singleLine = true,
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            shape = RoundedCornerShape(10.dp)
+                                            shape = RoundedCornerShape(12.dp)
                                         )
 
+                                        // Box 2: Scan Subnet (Uniform Size)
                                         Button(
                                             onClick = {
                                                 val p = portInput.toIntOrNull() ?: 5555
                                                 viewModel.startScan(p)
                                             },
                                             enabled = !isScanning,
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                                         ) {
                                             if (isScanning) {
                                                 CircularProgressIndicator(
@@ -323,19 +332,34 @@ fun WirelessScreen(
                                                     color = MaterialTheme.colorScheme.onPrimary
                                                 )
                                             } else {
-                                                Icon(Icons.Default.Search, contentDescription = null, Modifier.size(18.dp))
-                                                Spacer(Modifier.width(6.dp))
-                                                Text("Scan Subnet")
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Icon(Icons.Default.WifiFind, contentDescription = null, Modifier.size(18.dp))
+                                                    Spacer(Modifier.height(2.dp))
+                                                    Text("Scan Subnet", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                                }
                                             }
                                         }
 
+                                        // Box 3: Pair (Uniform Size)
                                         OutlinedButton(
                                             onClick = { showPairingDialog = true },
-                                            shape = RoundedCornerShape(10.dp)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                                         ) {
-                                            Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("Pair")
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(Icons.Default.QrCode2, contentDescription = null, Modifier.size(18.dp))
+                                                Spacer(Modifier.height(2.dp))
+                                                Text("Pair Device", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                            }
                                         }
                                     }
 
@@ -419,49 +443,101 @@ fun WirelessScreen(
                                 shape = RoundedCornerShape(12.dp)
                             )
 
-                            OutlinedTextField(
-                                value = manualPort,
-                                onValueChange = { manualPort = it },
-                                label = { Text("Port (shown on Wireless debugging screen)") },
-                                placeholder = { Text("e.g. 41255 or 5555") },
+                            // Pairing Port and Connect Port (Uniform Equal-Sized Boxes)
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            Button(
-                                onClick = {
-                                    val p = manualPort.toIntOrNull() ?: 5555
-                                    viewModel.connectManual(manualIp.trim(), p)
-                                },
-                                enabled = manualIp.isNotBlank() && !isLoading,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Connecting...")
-                                } else {
+                                OutlinedTextField(
+                                    value = manualPairingPort,
+                                    onValueChange = { manualPairingPort = it },
+                                    label = { Text("Pairing Port", maxLines = 1) },
+                                    placeholder = { Text("e.g. 38411") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                OutlinedTextField(
+                                    value = manualPort,
+                                    onValueChange = { manualPort = it },
+                                    label = { Text("Connect Port", maxLines = 1) },
+                                    placeholder = { Text("e.g. 41255") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+
+                            AnimatedVisibility(visible = manualPairingPort.isNotBlank()) {
+                                OutlinedTextField(
+                                    value = manualPairingCode,
+                                    onValueChange = { manualPairingCode = it },
+                                    label = { Text("6-Digit Pairing Code (from other phone dialog)") },
+                                    placeholder = { Text("e.g. 123456") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+
+                            if (manualPairingCode.isNotBlank() && manualPairingPort.isNotBlank()) {
+                                Button(
+                                    onClick = {
+                                        val pPort = manualPairingPort.toIntOrNull() ?: 5555
+                                        val cPort = manualPort.toIntOrNull() ?: pPort
+                                        viewModel.pairWithCode(manualIp.trim(), pPort, manualPairingCode.trim(), cPort)
+                                    },
+                                    enabled = manualIp.isNotBlank() && !isLoading,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
                                     Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Connect to Remote Phone")
+                                    Text("Pair & Connect to Remote Phone")
+                                }
+                            } else {
+                                Button(
+                                    onClick = {
+                                        val p = manualPort.toIntOrNull() ?: 5555
+                                        viewModel.connectManual(manualIp.trim(), p)
+                                    },
+                                    enabled = manualIp.isNotBlank() && !isLoading,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    if (isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Connecting...")
+                                    } else {
+                                        Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Connect to Remote Phone")
+                                    }
                                 }
                             }
 
                             OutlinedButton(
                                 onClick = { showPairingDialog = true },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Pair with QR or Pairing Code First")
+                                Text("Pair with QR or Pairing Code Dialog")
                             }
 
                             Spacer(Modifier.weight(1f))

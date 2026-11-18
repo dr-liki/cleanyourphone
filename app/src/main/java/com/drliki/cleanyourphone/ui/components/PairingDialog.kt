@@ -169,35 +169,43 @@ fun PairingDialog(
                             onValueChange = { host = it },
                             label = { Text("Target Phone IP") },
                             placeholder = { Text("e.g. 192.168.1.105") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp)
                         )
 
+                        // Pairing Port and Connect Port (Uniform Equal-Sized Boxes)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             OutlinedTextField(
                                 value = pairingPort,
                                 onValueChange = { pairingPort = it },
-                                label = { Text("Pairing Port") },
+                                label = { Text("Pairing Port", maxLines = 1) },
                                 placeholder = { Text("e.g. 38411") },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(12.dp)
                             )
                             OutlinedTextField(
                                 value = connectPort,
                                 onValueChange = { connectPort = it },
-                                label = { Text("Connect Port") },
+                                label = { Text("Connect Port", maxLines = 1) },
                                 placeholder = { Text("Optional") },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(12.dp)
                             )
                         }
 
@@ -206,10 +214,12 @@ fun PairingDialog(
                             onValueChange = { codeInput = it },
                             label = { Text("6-Digit Pairing Code") },
                             placeholder = { Text("Shown on other phone dialog") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp)
                         )
 
                         Spacer(Modifier.height(8.dp))

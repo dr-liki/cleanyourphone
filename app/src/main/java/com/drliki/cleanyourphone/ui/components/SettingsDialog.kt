@@ -75,7 +75,7 @@ fun SettingsDialog(
                     )
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Section 1: Bloat List Repository Link
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -121,7 +121,7 @@ fun SettingsDialog(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Section 2: Automatic Updates Toggle
                 Row(
@@ -150,7 +150,7 @@ fun SettingsDialog(
                     )
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Section 3: Manual Update
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
