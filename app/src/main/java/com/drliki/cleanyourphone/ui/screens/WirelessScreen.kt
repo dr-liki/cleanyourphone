@@ -540,19 +540,6 @@ fun WirelessScreen(
                                     }
                                 }
                             }
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Connecting...")
-                                    } else {
-                                        Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Connect to Remote Phone")
-                                    }
-                                }
-                            }
 
                             OutlinedButton(
                                 onClick = { showPairingDialog = true },
