@@ -267,15 +267,6 @@ fun ActionLogContent(
                     }
                 }
             }
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            if (allFilteredSelected) "Deselect All" else "Select All",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
 
             Spacer(Modifier.height(4.dp))
 
