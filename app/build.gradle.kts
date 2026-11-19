@@ -124,14 +124,7 @@ dependencies {
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
     implementation("dev.mobile:dadb:1.2.8")
-    implementation("com.flyfishxu:kadb:2.1.5")
 
     // QR code generation for Android 11+ Wireless Debugging pairing
     implementation("com.google.zxing:core:3.5.3")
-}
-
-tasks.configureEach {
-    if (name.contains("AarMetadata", ignoreCase = true)) {
-        enabled = false
-    }
 }

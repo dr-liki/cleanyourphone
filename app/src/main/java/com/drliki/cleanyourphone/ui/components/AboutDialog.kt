@@ -132,7 +132,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "• Universal-Debloater-Alliance (UAD-ng)\n• Shizuku by Rikka\n• Kadb by Flyfish Xu\n• DADb by mobile.dev\n• ZXing QR Project",
+                    "• Universal-Debloater-Alliance (UAD-ng)\n• Shizuku by Rikka\n• DADb by mobile.dev\n• ZXing QR Project",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

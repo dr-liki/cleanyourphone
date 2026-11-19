@@ -39,11 +39,11 @@ fun PairingDialog(
 
     // Pairing inputs initialized with auto-discovered values if present
     var host by remember(discoveredHost) { mutableStateOf(discoveredHost) }
-    var pairingPort by remember(discoveredPairingPort) {
-        mutableStateOf(if (discoveredPairingPort > 0) discoveredPairingPort.toString() else "")
-    }
     var connectPort by remember(discoveredConnectPort) {
         mutableStateOf(if (discoveredConnectPort > 0) discoveredConnectPort.toString() else "")
+    }
+    var pairingPort by remember(discoveredPairingPort) {
+        mutableStateOf(if (discoveredPairingPort > 0) discoveredPairingPort.toString() else "")
     }
     var codeInput by remember { mutableStateOf("") }
 
@@ -77,7 +77,7 @@ fun PairingDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Pair Device over Wi-Fi",
+                    "Connect & Authorize Device",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -85,14 +85,14 @@ fun PairingDialog(
                 Spacer(Modifier.height(4.dp))
 
                 Text(
-                    "Required once per device for Android 11+ Wireless Debugging",
+                    "Android 11+ Wireless Debugging Connection",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                // Tabs: Pairing Code vs QR
+                // Tabs: Direct Connect vs QR
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = MaterialTheme.colorScheme.surface
@@ -100,8 +100,8 @@ fun PairingDialog(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Pairing Code") },
-                        icon = { Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp)) }
+                        text = { Text("Wireless Connect") },
+                        icon = { Icon(Icons.Default.Wifi, contentDescription = null, Modifier.size(18.dp)) }
                     )
                     Tab(
                         selected = selectedTab == 1,
@@ -114,13 +114,13 @@ fun PairingDialog(
                 Spacer(Modifier.height(16.dp))
 
                 if (selectedTab == 0) {
-                    // ── Tab 1: Pairing Code (Auto-Discovery Supported) ───────
+                    // ── Tab 1: Direct Connect & Authorization ───────────────
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // Auto-discovery notification banner
-                        if (discoveredHost.isNotBlank() && discoveredPairingPort > 0) {
+                        if (discoveredHost.isNotBlank()) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = TierRecommended.copy(alpha = 0.12f),
@@ -139,13 +139,15 @@ fun PairingDialog(
                                     Spacer(Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            "Auto-Discovered Pairing Service!",
+                                            "Auto-Discovered Target Phone!",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = TierRecommended
                                         )
+                                        val displayName = if (discoveredDeviceName.isNotBlank()) discoveredDeviceName else "Remote Phone"
+                                        val displayPort = if (discoveredConnectPort > 0) discoveredConnectPort else discoveredPairingPort
                                         Text(
-                                            "${discoveredDeviceName.ifBlank { "Remote Phone" }} ($discoveredHost:$discoveredPairingPort)",
+                                            "$displayName ($discoveredHost:$displayPort)",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -159,7 +161,7 @@ fun PairingDialog(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with pairing code'.\nIP and port will be auto-filled once discovered.",
+                                    "On target phone:\nSettings > Developer options > Wireless debugging.\nEnter the IP and Port displayed under 'IP address & Port'.",
                                     modifier = Modifier.padding(10.dp),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -181,50 +183,12 @@ fun PairingDialog(
                             shape = RoundedCornerShape(12.dp)
                         )
 
-                        // Pairing Port and Connect Port (Uniform Equal-Sized 64dp Boxes)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = pairingPort,
-                                onValueChange = { pairingPort = it },
-                                label = { Text("Pairing Port", maxLines = 1) },
-                                placeholder = { Text("e.g. 38411") },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(64.dp),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = connectPort,
-                                onValueChange = { connectPort = it },
-                                label = { Text("Connect Port", maxLines = 1) },
-                                placeholder = { Text("e.g. 41255") },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(64.dp),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                        }
-
-                        Text(
-                            "Pairing Port is temporary (shown in pairing popup). Connect Port is the port under 'IP address & Port' on the target phone.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        // 6-Digit Code Input (64dp height for full visibility)
+                        // Connect Port Input (64dp height for full visibility)
                         OutlinedTextField(
-                            value = codeInput,
-                            onValueChange = { codeInput = it },
-                            label = { Text("6-Digit Pairing Code") },
-                            placeholder = { Text("Shown on other phone dialog") },
+                            value = connectPort,
+                            onValueChange = { connectPort = it },
+                            label = { Text("Connect Port (from 'IP address & Port')") },
+                            placeholder = { Text("e.g. 41255") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(64.dp),
@@ -233,18 +197,22 @@ fun PairingDialog(
                             shape = RoundedCornerShape(12.dp)
                         )
 
+                        Text(
+                            "Important: Enter the Connect Port under 'IP address & Port' on the target phone (e.g. 41255), NOT the temporary pairing popup port. When prompted on the target phone screen, tap 'Always allow'.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
                         Spacer(Modifier.height(8.dp))
 
                         Button(
                             onClick = {
-                                val pPort = pairingPort.toIntOrNull() ?: 0
                                 val cPort = connectPort.toIntOrNull() ?: 5555
-                                if (pPort > 0) {
-                                    onPairWithCode(host.trim(), pPort, codeInput.trim(), cPort)
-                                    onDismiss()
-                                }
+                                val pPort = pairingPort.toIntOrNull() ?: cPort
+                                onPairWithCode(host.trim(), pPort, codeInput.trim(), cPort)
+                                onDismiss()
                             },
-                            enabled = host.isNotBlank() && pairingPort.isNotBlank() && codeInput.isNotBlank(),
+                            enabled = host.isNotBlank() && connectPort.isNotBlank(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
@@ -252,7 +220,7 @@ fun PairingDialog(
                         ) {
                             Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Pair & Connect")
+                            Text("Connect & Authorize")
                         }
                     }
                 } else {
@@ -267,7 +235,7 @@ fun PairingDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with QR code' to scan.\n\nTip: For phone-to-phone pairing, the 'Pairing Code' tab with the 6-digit PIN is the recommended and standard method.",
+                                "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with QR code' to scan.\n\nTip: For direct phone-to-phone connection, use the 'Wireless Connect' tab to enter the IP & Connect Port directly.",
                                 modifier = Modifier.padding(10.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

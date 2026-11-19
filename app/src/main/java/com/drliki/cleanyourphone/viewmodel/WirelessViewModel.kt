@@ -161,16 +161,8 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun pairWithCode(host: String, pairingPort: Int, code: String, connectPort: Int) {
         viewModelScope.launch {
             _isLoading.value = true
-            _snackbar.value = "Pairing with $host:$pairingPort..."
-            engine.pair(host, pairingPort, code)
-                .onSuccess {
-                    _snackbar.value = "Paired successfully! Connecting to $host:$connectPort..."
-                    connectTo(DiscoveredDevice(host, connectPort, "Paired Device ($host)", "Android Phone"))
-                }
-                .onFailure { err ->
-                    val msg = err.message ?: "Session expired or rejected"
-                    _snackbar.value = "Pairing failed: $msg. Ensure 'Pair with pairing code' popup remains open on target phone."
-                }
+            _snackbar.value = "Connecting to $host:$connectPort (check target phone screen)..."
+            connectTo(DiscoveredDevice(host, connectPort, "Remote Phone ($host)", "Android Phone"))
             _isLoading.value = false
         }
     }
