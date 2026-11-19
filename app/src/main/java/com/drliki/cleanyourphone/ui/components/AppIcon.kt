@@ -289,7 +289,7 @@ fun AppIconView(
         } else {
             // Vibrant Material You styled fallback avatar with app initial
             val colorIndex = remember(packageName) {
-                (packageName.hashCode().toLong() and 0x7FFFFFFF % AVATAR_PALETTE.size).toInt()
+                (packageName.hashCode() and 0x7FFFFFFF) % AVATAR_PALETTE.size
             }
             val bgColor = AVATAR_PALETTE[colorIndex]
 
