@@ -38,13 +38,27 @@ fun ActionLogScreen(
     onUndoMultipleActions: (List<ActionLogEntry>) -> Unit = { list -> list.forEach(onUndoAction) },
     onNavigateBack: () -> Unit
 ) {
-    val activeCount = actionLog.count { !it.isUndone }
-    val restoredCount = actionLog.count { it.isUndone }
     var showRestoreAllDialog by remember { mutableStateOf(false) }
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(LogFilterType.ALL) }
     var selectedDevice by remember { mutableStateOf<String?>(initialDeviceFilter) }
+
+    val currentScoped = remember(actionLog, selectedDevice, searchQuery) {
+        val devFiltered = if (selectedDevice == null) actionLog else actionLog.filter { it.deviceName == selectedDevice }
+        if (searchQuery.isBlank()) {
+            devFiltered
+        } else {
+            devFiltered.filter { entry ->
+                entry.appLabel.contains(searchQuery, true) ||
+                entry.packageName.contains(searchQuery, true) ||
+                entry.deviceName.contains(searchQuery, true) ||
+                entry.action.contains(searchQuery, true)
+            }
+        }
+    }
+    val activeCount = currentScoped.count { !it.isUndone }
+    val restoredCount = currentScoped.count { it.isUndone }
 
     Scaffold(
         topBar = {
@@ -116,7 +130,7 @@ fun ActionLogScreen(
     }
 
     if (showRestoreAllDialog) {
-        val activeEntries = actionLog.filter { !it.isUndone }
+        val activeEntries = currentScoped.filter { !it.isUndone }
         AlertDialog(
             onDismissRequest = { showRestoreAllDialog = false },
             icon = { Icon(Icons.Default.Restore, contentDescription = null, tint = TierRecommended) },
@@ -171,24 +185,39 @@ fun ActionLogContent(
         derivedStateOf { listState.firstVisibleItemIndex > 2 }
     }
 
-    val activeCount = actionLog.count { !it.isUndone }
-    val restoredCount = actionLog.count { it.isUndone }
     val effectiveDevice = fixedDevice ?: selectedDevice
 
-    val filteredLog = remember(actionLog, searchQuery, selectedFilter, effectiveDevice) {
-        actionLog.filter { entry ->
-            val matchesFilter = when (selectedFilter) {
-                LogFilterType.ALL -> true
-                LogFilterType.RESTORED -> entry.isUndone
-            }
-            val matchesDevice = effectiveDevice == null || entry.deviceName == effectiveDevice
-            val matchesSearch = searchQuery.isBlank() ||
+    // Scoped by device filter (or all devices if none selected)
+    val deviceScopedEntries = remember(actionLog, effectiveDevice) {
+        if (effectiveDevice.isNullOrBlank()) {
+            actionLog
+        } else {
+            actionLog.filter { it.deviceName == effectiveDevice }
+        }
+    }
+
+    // Scoped by search query if active
+    val searchScopedEntries = remember(deviceScopedEntries, searchQuery) {
+        if (searchQuery.isBlank()) {
+            deviceScopedEntries
+        } else {
+            deviceScopedEntries.filter { entry ->
                 entry.appLabel.contains(searchQuery, true) ||
                 entry.packageName.contains(searchQuery, true) ||
                 entry.deviceName.contains(searchQuery, true) ||
                 entry.action.contains(searchQuery, true)
+            }
+        }
+    }
 
-            matchesFilter && matchesDevice && matchesSearch
+    val allActionsCount = searchScopedEntries.size
+    val activeCount = searchScopedEntries.count { !it.isUndone }
+    val restoredCount = searchScopedEntries.count { it.isUndone }
+
+    val filteredLog = remember(searchScopedEntries, selectedFilter) {
+        when (selectedFilter) {
+            LogFilterType.ALL -> searchScopedEntries
+            LogFilterType.RESTORED -> searchScopedEntries.filter { it.isUndone }
         }
     }
 
@@ -247,7 +276,7 @@ fun ActionLogContent(
                 ) {
                     items(LogFilterType.entries) { filter ->
                         val count = when (filter) {
-                            LogFilterType.ALL -> actionLog.size
+                            LogFilterType.ALL -> allActionsCount
                             LogFilterType.RESTORED -> restoredCount
                         }
                         FilterChip(

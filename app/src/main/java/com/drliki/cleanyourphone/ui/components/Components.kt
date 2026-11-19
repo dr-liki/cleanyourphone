@@ -577,54 +577,91 @@ fun PackageCard(
 
                 // ── Package tags/badges moved BELOW the description line ──
                 Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Status Badge (Disabled or Active)
+                val badges = buildList<@Composable () -> Unit> {
+                    // Status Badge (Disabled)
                     if (!pkg.isEnabled) {
-                        BadgePill(
-                            label = "Disabled",
-                            color = MaterialTheme.colorScheme.outline,
-                            bgColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                        add {
+                            BadgePill(
+                                label = "Disabled",
+                                color = MaterialTheme.colorScheme.outline,
+                                bgColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
                     }
 
                     // Removal Tier Badge
-                    TierBadgePill(pkg.tier)
+                    add {
+                        TierBadgePill(pkg.tier)
+                    }
 
                     // Brand Specific Recommendation Badge
                     if (pkg.isTailored) {
-                        BadgePill(
-                            label = "Brand Specific",
-                            color = Color(0xFFB45309),
-                            bgColor = Color(0xFFFEF3C7)
-                        )
+                        add {
+                            BadgePill(
+                                label = "Brand Specific",
+                                color = Color(0xFFB45309),
+                                bgColor = Color(0xFFFEF3C7)
+                            )
+                        }
                     }
 
                     // System / User App Badge
                     if (pkg.isSystemApp) {
-                        BadgePill(
-                            label = "System",
-                            color = MaterialTheme.colorScheme.secondary,
-                            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                        )
+                        add {
+                            BadgePill(
+                                label = "System",
+                                color = MaterialTheme.colorScheme.secondary,
+                                bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            )
+                        }
                     } else {
-                        BadgePill(
-                            label = "User",
-                            color = MaterialTheme.colorScheme.tertiary,
-                            bgColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                        )
+                        add {
+                            BadgePill(
+                                label = "User",
+                                color = MaterialTheme.colorScheme.tertiary,
+                                bgColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                            )
+                        }
                     }
 
                     // Safeguard Lock Badge
                     if (pkg.isSafeguardLocked) {
-                        BadgePill(
-                            label = "Locked",
-                            color = TierUnsafe,
-                            bgColor = TierUnsafe.copy(alpha = 0.12f)
-                        )
+                        add {
+                            BadgePill(
+                                label = "Locked",
+                                color = TierUnsafe,
+                                bgColor = TierUnsafe.copy(alpha = 0.12f)
+                            )
+                        }
+                    }
+                }
+
+                // Dynamically add a second line if there are more than 3 badges for an app
+                if (badges.size > 3) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            badges.take(3).forEach { badge -> badge() }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            badges.drop(3).forEach { badge -> badge() }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        badges.forEach { badge -> badge() }
                     }
                 }
 

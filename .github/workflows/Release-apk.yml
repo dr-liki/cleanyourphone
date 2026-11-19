@@ -11,7 +11,7 @@ on:
       release_tag:
         description: "Release tag to publish (e.g. v2.7.0)"
         required: false
-        default: "v2.9.0"
+        default: "v3.1.0"
 
 permissions:
   contents: write
@@ -133,17 +133,12 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            ### 🌟 What's New in v3.0.0
-            - **🧹 Clear Discovered Devices**: Added a Clear button beside Re-scan on the Scan Network page to instantly wipe stale network scan results.
-            - **📜 Streamlined Action Logs**: Removed the "Active" tab so you can switch seamlessly between "All Actions" and "Restored". Inside Wireless ADB mode, Action Logs are strictly isolated to the connected device.
-            - **🎯 Direct Action Log Access**: Tapping any saved device profile in disconnected state opens that device's historical Action Log.
-            - **🟢 Live Device Availability Indicator**: Saved profiles dynamically show an "Available" status badge when reachable on the local Wi-Fi network.
-            - **✨ Cleaner Saved Profiles & Status Tabs**: Removed redundant remembered headers, "+ Pair New" buttons, and "View & Manage" buttons for a cleaner interface.
-            - **🔔 Dismissible Pairing Banner**: Wireless pairing detection banner now features a dismiss button, showing the device name on line 1 and network host:port on line 2.
-            - **🔍 Refined Header Search Bar**: Beautiful full-width Material 3 search bar with proper contrast, zero obscured text, autofocus, and instant keyboard activation.
-            - **🏷️ Brand Specific Badges**: App cards now feature clean "Brand Specific" badges without verbose card-body text clutter.
-            - **📱 Smart Wireless App Label Resolver**: Robust OEM and TV package name resolution displaying friendly app names instead of raw reversed domain names.
-            - **ℹ️ Minimalist About Dialog**: Clean, professional, and decluttered About information.
+            ### 🌟 What's New in v3.1.0
+            - **🏷️ Dynamic Multi-Line App Badges**: Dynamically wraps package badges onto a clean second line when an app has more than 3 badges in the Packages tab, preventing horizontal clipping.
+            - **🎨 High-Fidelity Remote App Icons**: Integrated smart package alias resolution and authentic branded vector glyphs with signature brand colors for remote phones and TVs.
+            - **📱 Highly Accurate Wireless App Names**: Expanded 350+ OEM dictionary (Samsung One UI, Xiaomi/HyperOS, Google, BBK, Sony, Motorola, TCL, Streaming & TV) with brand-aware name formatting.
+            - **📊 Real-Time Filtered Action Log Counts**: Fixed count in brackets beside "All Actions" to dynamically update according to the active device filter and search scope.
+            - **✨ Updated About Section**: Replaced "Material Design 3" with "dr-liki" beside the version number in the About dialog.
 
             ### 📦 Downloads
             | File | For |

@@ -29,11 +29,12 @@ class UadRepository(private val context: Context) {
         private const val CACHE_TV_FILE_NAME = "cleanyourtv_lists.json"
 
         private val KNOWN_APP_LABELS = mapOf(
-            // Samsung
+            // Samsung & One UI
             "com.sec.android.app.sbrowser" to "Samsung Internet",
+            "com.sec.android.app.sbrowser.beta" to "Samsung Internet Beta",
             "com.sec.android.app.popupcalculator" to "Samsung Calculator",
             "com.sec.android.app.myfiles" to "Samsung My Files",
-            "com.sec.android.app.voicenote" to "Voice Recorder",
+            "com.sec.android.app.voicenote" to "Samsung Voice Recorder",
             "com.sec.android.app.camera" to "Samsung Camera",
             "com.sec.android.gallery3d" to "Samsung Gallery",
             "com.sec.android.app.clockpackage" to "Samsung Clock",
@@ -41,34 +42,78 @@ class UadRepository(private val context: Context) {
             "com.samsung.android.calendar" to "Samsung Calendar",
             "com.samsung.android.messaging" to "Samsung Messages",
             "com.samsung.android.dialer" to "Samsung Phone",
+            "com.samsung.android.incallui" to "Samsung In-Call UI",
             "com.samsung.android.contacts" to "Samsung Contacts",
+            "com.samsung.android.app.contacts" to "Samsung Contacts",
+            "com.samsung.android.app.telephonyui" to "Samsung Call Settings",
             "com.samsung.android.voc" to "Samsung Members",
             "com.samsung.android.app.spage" to "Samsung Free",
-            "com.samsung.android.game.gos" to "Game Optimizing Service",
-            "com.samsung.android.game.gamehome" to "Gaming Hub",
+            "com.samsung.android.game.gos" to "Game Optimizing Service (GOS)",
+            "com.samsung.android.game.gamehome" to "Gaming Hub / Launcher",
+            "com.samsung.android.game.gametools" to "Game Booster",
             "com.samsung.android.bixby.agent" to "Bixby Voice",
             "com.samsung.android.bixby.wakeup" to "Bixby Wakeup",
             "com.samsung.android.bixby.service" to "Bixby Service",
             "com.samsung.android.visionintelligence" to "Bixby Vision",
+            "com.samsung.android.app.routines" to "Bixby Routines",
             "com.samsung.android.smartswitchassistant" to "Smart Switch",
+            "com.sec.android.easyMover" to "Smart Switch Agent",
             "com.samsung.android.oneconnect" to "SmartThings",
-            "com.samsung.android.rubin.app" to "Customization Service",
+            "com.samsung.android.rubin.app" to "Customization Service (Rubin)",
             "com.samsung.android.kidsinstaller" to "Samsung Kids",
             "com.samsung.android.app.sharelive" to "Quick Share",
+            "com.samsung.android.allshare.service.fileshare" to "Quick Share File Service",
+            "com.samsung.android.aware.service" to "Quick Share Core",
             "com.samsung.android.ardrawing" to "AR Doodle",
             "com.samsung.android.aremoji" to "AR Emoji",
+            "com.samsung.android.aremojieditor" to "AR Emoji Editor",
             "com.samsung.android.arzone" to "AR Zone",
+            "com.samsung.android.livestickers" to "AR Live Stickers",
             "com.samsung.android.spay" to "Samsung Wallet",
             "com.samsung.android.samsungpass" to "Samsung Pass",
-            "com.samsung.android.app.tips" to "Tips",
+            "com.samsung.android.samsungpassautofill" to "Samsung Pass Autofill",
+            "com.samsung.android.app.tips" to "Samsung Tips",
             "com.samsung.android.weather" to "Samsung Weather",
             "com.samsung.android.mdecservice" to "Call & Text on other devices",
+            "com.sec.android.app.samsungapps" to "Galaxy Store",
+            "com.sec.android.app.billing" to "Samsung Checkout",
+            "com.samsung.android.honeyboard" to "Samsung Keyboard",
+            "com.samsung.android.knox.containercore" to "Knox Container Core",
+            "com.samsung.knox.securefolder" to "Secure Folder",
+            "com.sec.enterprise.knox.attestation" to "Knox Attestation",
+            "com.samsung.android.app.smartcapture" to "Samsung Smart Capture",
+            "com.samsung.android.lool" to "Device Care",
+            "com.samsung.android.sm.devicesecurity" to "Device Security (McAfee)",
+            "com.samsung.android.app.dressroom" to "Samsung Wallpaper & Themes",
+            "com.samsung.android.themestore" to "Galaxy Themes",
+            "com.samsung.android.themecenter" to "Galaxy Themes Core",
+            "com.samsung.android.dynamiclock" to "Dynamic Lock Screen",
+            "com.samsung.android.app.cocktailbarservice" to "Edge Panels",
+            "com.samsung.android.fmm" to "Find My Mobile",
+            "com.samsung.android.mdx" to "Multi Control / Link to Windows",
+            "com.samsung.android.dha" to "Samsung Adapt Sound",
+            "com.samsung.android.mobileservice" to "Samsung Experience Service",
+            "com.samsung.android.authfw" to "Samsung Authentication Framework",
+            "com.samsung.android.fast" to "Samsung Link Sharing",
+            "com.samsung.android.app.soundpicker" to "Sound Picker",
+            "com.samsung.android.scs" to "Samsung Core Services",
+            "com.samsung.android.ipsgeofence" to "Samsung Geo-fence Service",
+            "com.samsung.android.location" to "Samsung Location SDK",
+            "com.samsung.android.app.simplesharing" to "Simple Sharing",
+            "com.samsung.android.privateshare" to "Private Share",
+            "com.samsung.android.app.reminder" to "Samsung Reminder",
+            "com.samsung.android.forest" to "Digital Wellbeing (Samsung)",
+            "com.samsung.android.smartface" to "Smart Stay",
+            "com.samsung.android.beaconmanager" to "SmartThings Find Beacon",
+            "com.samsung.android.easysetup" to "Nearby Device Scanning",
 
             // Xiaomi / MIUI / HyperOS
             "com.miui.analytics" to "Xiaomi Analytics",
             "com.miui.msa.global" to "MIUI System Ads (MSA)",
             "com.miui.cleanmaster" to "Cleaner",
             "com.miui.cloudservice" to "Mi Cloud",
+            "com.miui.cloudservice.sysbase" to "Mi Cloud Core",
+            "com.miui.cloudbackup" to "Mi Cloud Backup",
             "com.miui.yellowpage" to "Yellow Pages",
             "com.miui.videoplayer" to "Mi Video",
             "com.miui.player" to "Mi Music",
@@ -77,22 +122,44 @@ class UadRepository(private val context: Context) {
             "com.miui.calculator" to "Mi Calculator",
             "com.miui.notes" to "Mi Notes",
             "com.miui.gallery" to "Mi Gallery",
-            "com.miui.bugreport" to "Feedback",
-            "com.xiaomi.joyose" to "Joyose",
+            "com.miui.bugreport" to "Services & Feedback",
+            "com.miui.home" to "System Launcher (HyperOS)",
+            "com.mi.android.globalpersonalassistant" to "App Vault",
+            "com.miui.hybrid" to "Quick Apps",
+            "com.miui.hybrid.accessory" to "Quick Apps Engine",
+            "com.miui.securityadd" to "Security Component",
+            "com.miui.securitycenter" to "Security Center",
+            "com.miui.powerkeeper" to "Battery & Performance",
+            "com.xiaomi.joyose" to "Joyose (Game Throttling)",
             "com.xiaomi.midrop" to "ShareMe",
             "com.xiaomi.mipicks" to "GetApps",
             "com.xiaomi.payment" to "Mi Pay",
-            "com.xiaomi.scanner" to "Scanner",
+            "com.xiaomi.scanner" to "Mi Scanner",
+            "com.xiaomi.discover" to "Xiaomi Discover",
+            "com.xiaomi.micloud.sdk" to "Mi Cloud SDK",
+            "com.xiaomi.miplay_client" to "Mi Play",
+            "com.xiaomi.simactivate.service" to "Xiaomi SIM Activation",
+            "com.miui.screenrecorder" to "Screen Recorder",
+            "com.miui.voiceassist" to "Mi AI Voice Assistant",
+            "com.miui.fm" to "FM Radio",
+            "com.miui.miservice" to "Mi Service",
+            "com.miui.mishare.connectivity" to "Mi Share",
+            "com.miui.aod" to "Always-on Display",
 
-            // Google
+            // Google & Android TV
             "com.google.android.gms" to "Google Play Services",
             "com.google.android.gsf" to "Google Services Framework",
             "com.android.vending" to "Google Play Store",
             "com.google.android.youtube" to "YouTube",
+            "com.google.android.youtube.tv" to "YouTube on TV",
+            "com.google.android.youtube.tvmusic" to "YouTube Music on TV",
             "com.google.android.apps.youtube.music" to "YouTube Music",
             "com.google.android.videos" to "Google TV",
             "com.google.android.apps.photos" to "Google Photos",
             "com.google.android.apps.docs" to "Google Drive",
+            "com.google.android.apps.docs.editors.docs" to "Google Docs",
+            "com.google.android.apps.docs.editors.sheets" to "Google Sheets",
+            "com.google.android.apps.docs.editors.slides" to "Google Slides",
             "com.google.android.apps.maps" to "Google Maps",
             "com.google.android.gm" to "Gmail",
             "com.google.android.googlequicksearchbox" to "Google App",
@@ -105,8 +172,108 @@ class UadRepository(private val context: Context) {
             "com.google.android.keep" to "Google Keep",
             "com.google.android.apps.tachyon" to "Google Meet",
             "com.google.android.apps.wellbeing" to "Digital Wellbeing",
+            "com.google.android.apps.nbu.paisa.user" to "Google Pay",
+            "com.google.android.apps.nbu.files" to "Files by Google",
+            "com.google.android.deskclock" to "Google Clock",
+            "com.google.android.calculator" to "Google Calculator",
+            "com.google.android.tts" to "Speech Services by Google",
+            "com.google.android.marvin.talkback" to "Android Accessibility Suite",
+            "com.google.android.tvlauncher" to "Android TV Home",
+            "com.google.android.tv.launcher" to "Android TV Launcher",
+            "com.google.android.apps.tv.launcherx" to "Google TV Launcher",
+            "com.google.android.tvrecommendations" to "Android TV Core Services",
+            "com.google.android.katniss" to "Google Assistant on TV",
+            "com.google.android.tungsten.setupwraith" to "Android TV Setup",
+            "com.google.android.tv.remote.service" to "Android TV Remote Service",
+            "com.google.android.syncadapters.calendar" to "Google Calendar Sync",
+            "com.google.android.syncadapters.contacts" to "Google Contacts Sync",
+            "com.google.android.backuptransport" to "Google Backup Transport",
+            "com.google.android.feedback" to "Google Play Feedback",
+            "com.google.android.partnersetup" to "Google Partner Setup",
+            "com.google.android.printservice.recommendation" to "Print Service Recommendation",
+            "com.google.android.onetimeinitializer" to "Google One Time Initializer",
+            "com.google.android.ext.services" to "Android Extension Services",
+            "com.google.android.ext.shared" to "Android Shared Library",
+            "com.google.android.play.games" to "Google Play Games",
+            "com.google.android.projection.gearhead" to "Android Auto",
+            "com.google.android.apps.fitness" to "Google Fit",
 
-            // Meta
+            // Streaming, Media & Entertainment
+            "com.netflix.ninja" to "Netflix on TV",
+            "com.netflix.mediaclient" to "Netflix",
+            "com.amazon.amazonvideo.livingroom" to "Prime Video on TV",
+            "com.amazon.avod.thirdpartyclient" to "Prime Video",
+            "com.amazon.mp3" to "Amazon Music",
+            "com.amazon.mShop.android.shopping" to "Amazon Shopping",
+            "com.spotify.music" to "Spotify",
+            "com.spotify.tv.android" to "Spotify on TV",
+            "com.disney.disneyplus" to "Disney+",
+            "com.hulu.plus" to "Hulu",
+            "com.hbo.hbonow" to "Max (HBO)",
+            "com.wbd.stream" to "Max",
+            "com.apple.atve.androidtv.appletv" to "Apple TV",
+            "com.peacocktv.peacockandroid" to "Peacock",
+            "com.cbs.app" to "Paramount+",
+            "com.plexapp.android" to "Plex",
+            "org.xbmc.kodi" to "Kodi",
+            "tv.twitch.android.app" to "Twitch",
+            "com.crunchyroll.crunchyroid" to "Crunchyroll",
+            "com.hotstar.androidtv" to "Disney+ Hotstar TV",
+            "in.startv.hotstar" to "Disney+ Hotstar",
+            "com.jio.media.ondemand" to "JioCinema",
+            "com.sonyliv" to "Sony LIV",
+            "com.graymatrix.did" to "Zee5",
+            "org.videolan.vlc" to "VLC Media Player",
+            "com.mxtech.videoplayer.ad" to "MX Player",
+
+            // BBK Electronics (OnePlus, OPPO, Realme, Vivo)
+            "com.oneplus.camera" to "OnePlus Camera",
+            "com.oneplus.gallery" to "OnePlus Gallery",
+            "com.oneplus.soundrecorder" to "OnePlus Sound Recorder",
+            "com.oneplus.weather" to "OnePlus Weather",
+            "com.oneplus.filemanager" to "OnePlus File Manager",
+            "com.oneplus.calculator" to "OnePlus Calculator",
+            "com.oneplus.deskclock" to "OnePlus Clock",
+            "com.oneplus.note" to "OnePlus Notes",
+            "com.oneplus.gamespace" to "OnePlus Games",
+            "com.coloros.gamespace" to "OPlus Game Space",
+            "com.coloros.athena" to "Athena Resource Manager",
+            "com.oplus.cosa" to "OPPO System Assistant",
+            "com.heytap.mcs" to "HeyTap Cloud Service",
+            "com.heytap.pictorial" to "Lock Screen Magazine",
+            "com.heytap.themestore" to "Theme Store",
+            "com.heytap.market" to "App Market",
+            "com.heytap.browser" to "HeyTap Browser",
+            "com.oplus.melody" to "HeyMelody",
+            "com.vivo.browser" to "Vivo Browser",
+            "com.vivo.easyshare" to "Vivo EasyShare",
+            "com.vivo.appstore" to "V-Appstore",
+            "com.vivo.globalsearch" to "Vivo Global Search",
+            "com.vivo.game" to "Vivo Game Center",
+            "com.vivo.space" to "Jovi Home",
+
+            // Motorola, Sony, TCL, Transsion
+            "com.motorola.ccc.notification" to "Motorola Notifications",
+            "com.motorola.ccc.ota" to "Motorola Software Update",
+            "com.motorola.genie" to "Moto Help",
+            "com.motorola.motocit" to "Moto Device Test",
+            "com.motorola.actions" to "Moto Actions",
+            "com.motorola.gestures" to "Moto Gestures",
+            "com.motorola.gamemode" to "Moto Gametime",
+            "com.motorola.camera2" to "Moto Camera",
+            "com.motorola.readyfor" to "Ready For",
+            "com.sonymobile.cinema" to "Cinema Pro",
+            "com.sonymobile.photopro" to "Photo Pro",
+            "com.sonymobile.music" to "Sony Music",
+            "com.sony.dtv.irbservice" to "Sony TV IR Blaster",
+            "com.sony.dtv.tvx" to "Sony TV Services",
+            "com.tcl.tvmanager" to "TCL TV Guard",
+            "com.tcl.browser" to "TCL BrowseHere",
+            "com.tcl.multiscreen.client" to "TCL MagiConnect",
+            "com.transsion.hilauncher" to "HiOS Launcher",
+            "com.transsion.xshare" to "XShare",
+
+            // Meta, Microsoft, Common Social & Utilities
             "com.facebook.katana" to "Facebook",
             "com.facebook.orca" to "Messenger",
             "com.facebook.services" to "Meta Services",
@@ -114,35 +281,22 @@ class UadRepository(private val context: Context) {
             "com.facebook.system" to "Meta App Installer",
             "com.instagram.android" to "Instagram",
             "com.whatsapp" to "WhatsApp",
-
-            // Microsoft
             "com.microsoft.office.officehubrow" to "Microsoft 365 (Office)",
             "com.microsoft.office.outlook" to "Microsoft Outlook",
             "com.microsoft.skydrive" to "Microsoft OneDrive",
             "com.microsoft.appmanager" to "Link to Windows",
+            "com.microsoft.teams" to "Microsoft Teams",
             "com.linkedin.android" to "LinkedIn",
-
-            // Streaming / Media / TV
-            "com.netflix.ninja" to "Netflix",
-            "com.netflix.mediaclient" to "Netflix",
-            "com.amazon.amazonvideo.livingroom" to "Prime Video",
-            "com.amazon.mp3" to "Amazon Music",
-            "com.amazon.mShop.android.shopping" to "Amazon Shopping",
-            "com.spotify.music" to "Spotify",
-            "com.spotify.tv.android" to "Spotify on TV",
-            "com.disney.disneyplus" to "Disney+",
-            "com.hulu.plus" to "Hulu",
-            "com.google.android.tv.launcher" to "Android TV Home",
-            "com.google.android.tungsten.setupwraith" to "Android TV Setup",
-
-            // Other OEMs
-            "com.coloros.athena" to "Athena Engine",
-            "com.oplus.cosa" to "OPPO System Assistant",
-            "com.heytap.mcs" to "HeyTap Cloud",
-            "com.vivo.browser" to "Vivo Browser",
-            "com.vivo.easyshare" to "EasyShare",
-            "com.motorola.ccc.notification" to "Motorola Notifications",
-            "com.sonyericsson.organizer" to "Sony Organizer"
+            "org.telegram.messenger" to "Telegram",
+            "com.twitter.android" to "X (Twitter)",
+            "com.zhiliaoapp.musically" to "TikTok",
+            "com.snapchat.android" to "Snapchat",
+            "com.discord" to "Discord",
+            "us.zoom.videomeetings" to "Zoom",
+            "com.truecaller" to "Truecaller",
+            "com.shazam.android" to "Shazam",
+            "com.booking" to "Booking.com",
+            "com.king.candycrushsaga" to "Candy Crush Saga"
         )
     }
 
@@ -492,34 +646,64 @@ class UadRepository(private val context: Context) {
                 !clean.startsWith("(CleanYourTV", ignoreCase = true)
             ) {
                 val firstDelim = clean.indexOfAny(charArrayOf('.', ':', '—', '-'))
-                if (firstDelim in 3..45) {
+                if (firstDelim in 3..36) {
                     val candidate = clean.substring(0, firstDelim).trim()
-                    if (!candidate.startsWith("This ", ignoreCase = true) &&
-                        !candidate.startsWith("The ", ignoreCase = true) &&
-                        !candidate.startsWith("A ", ignoreCase = true) &&
-                        !candidate.startsWith("An ", ignoreCase = true) &&
-                        !candidate.startsWith("Used ", ignoreCase = true) &&
-                        !candidate.startsWith("Disabling ", ignoreCase = true) &&
-                        !candidate.startsWith("Pre-installed ", ignoreCase = true) &&
-                        !candidate.startsWith("Preinstalled ", ignoreCase = true) &&
-                        !candidate.startsWith("System ", ignoreCase = true)
-                    ) {
+                    val invalidStarters = listOf(
+                        "this", "the", "a", "an", "used", "disabling", "pre-installed",
+                        "preinstalled", "system", "allows", "provides", "required", "enables",
+                        "tracks", "collects", "manages", "controls", "contains", "default",
+                        "stock", "official", "background", "internal", "framework", "core",
+                        "service", "daemon", "component", "handles", "helper", "implements",
+                        "stores", "supports", "syncs", "can be", "safe to", "not needed",
+                        "needed for", "part of", "telemetry", "analytics", "bloatware"
+                    )
+                    val candidateLower = candidate.lowercase()
+                    val isSentence = invalidStarters.any { candidateLower.startsWith(it) } || candidate.split(' ').size > 5
+                    if (!isSentence) {
                         return candidate
                     }
                 }
             }
         }
 
-        // 4. Parse friendly title from package segments
+        // 4. Parse friendly title from package segments with brand awareness
         return formatFriendlyPackageName(pkgName)
     }
 
     private fun formatFriendlyPackageName(pkgName: String): String {
         val parts = pkgName.split('.').filter { it.isNotBlank() }
-        val ignored = setOf("com", "org", "net", "android", "google", "app", "apps", "vendor", "service", "services", "system")
+        if (parts.isEmpty()) return pkgName
+
+        // Detect brand prefix
+        val brandPrefix = when {
+            pkgName.startsWith("com.samsung.") || pkgName.startsWith("com.sec.") -> "Samsung"
+            pkgName.startsWith("com.miui.") || pkgName.startsWith("com.xiaomi.") -> "Xiaomi"
+            pkgName.startsWith("com.google.android.") || pkgName.startsWith("com.google.") -> "Google"
+            pkgName.startsWith("com.oneplus.") -> "OnePlus"
+            pkgName.startsWith("com.oppo.") || pkgName.startsWith("com.coloros.") -> "OPPO"
+            pkgName.startsWith("com.vivo.") || pkgName.startsWith("com.bbk.") || pkgName.startsWith("com.iqoo.") -> "Vivo"
+            pkgName.startsWith("com.sony.") || pkgName.startsWith("com.sonymobile.") -> "Sony"
+            pkgName.startsWith("com.motorola.") || pkgName.startsWith("com.moto.") -> "Motorola"
+            pkgName.startsWith("com.tcl.") -> "TCL"
+            pkgName.startsWith("com.amazon.") -> "Amazon"
+            pkgName.startsWith("com.huawei.") || pkgName.startsWith("com.hihonor.") -> "Huawei"
+            pkgName.startsWith("com.transsion.") -> "Transsion"
+            else -> null
+        }
+
+        val ignored = setOf("com", "org", "net", "android", "apps", "app", "vendor", "service", "services", "system", "sec", "miui", "xiaomi", "samsung", "google", "oppo", "vivo", "oneplus", "sony", "motorola", "tcl", "amazon")
         val meaningful = parts.filter { it.lowercase() !in ignored }
-        val target = meaningful.lastOrNull() ?: parts.lastOrNull() ?: pkgName
-        // Split camelCase and underscores into title-cased words
+
+        // Handle cases like youtube.tv or livingroom or tachyon
+        val target = when {
+            meaningful.isEmpty() -> parts.last()
+            meaningful.size >= 2 && (meaningful.last().lowercase() in setOf("tv", "ui", "service", "helper", "agent", "core", "client")) -> {
+                "${meaningful[meaningful.size - 2]} ${meaningful.last()}"
+            }
+            else -> meaningful.last()
+        }
+
+        // Title-case camelCase and underscores
         val words = target.replace(Regex("([a-z])([A-Z])"), "$1 $2")
             .replace('_', ' ')
             .replace('-', ' ')
@@ -527,6 +711,11 @@ class UadRepository(private val context: Context) {
             .filter { it.isNotBlank() }
             .map { it.replaceFirstChar { c -> c.uppercase() } }
 
-        return if (words.isNotEmpty()) words.joinToString(" ") else target.replaceFirstChar { it.uppercase() }
+        val formattedTarget = words.joinToString(" ")
+        return if (brandPrefix != null && !formattedTarget.startsWith(brandPrefix, ignoreCase = true)) {
+            "$brandPrefix $formattedTarget"
+        } else {
+            formattedTarget
+        }
     }
 }

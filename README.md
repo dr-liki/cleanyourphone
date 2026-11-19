@@ -5,7 +5,7 @@
 **Modern, open-source Android debloater for smartphones, tablets, and Android/Google TVs.**  
 *Debloat directly on-device with privileged Shizuku access, or wirelessly across your local network over Wireless ADB.*
 
-[![Release](https://img.shields.io/badge/Release-v3.0.0-0284C7?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v3.0.0)
+[![Release](https://img.shields.io/badge/Release-v3.1.0-0284C7?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v3.1.0)
 [![Android Compatibility](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%2B)-059669?style=flat-square&logo=android)](#compatibility)
 [![Privilege Architecture](https://img.shields.io/badge/Engines-Shizuku%20%7C%20Wireless%20ADB-4F46E5?style=flat-square)](#-core-architecture--modes)
 [![Debloat Databases](https://img.shields.io/badge/Catalogs-UAD--ng%20%26%20CleanYourTV-D97706?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
@@ -287,7 +287,7 @@ All official release builds are signed with a permanent release keystore:
   ```
 - **Verify APK Signature**:
   ```bash
-  apksigner verify --print-certs CleanYourPhone-v3.0.0.apk
+  apksigner verify --print-certs CleanYourPhone-v3.1.0.apk
   ```
 
 ---
