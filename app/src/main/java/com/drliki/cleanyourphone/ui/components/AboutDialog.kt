@@ -69,7 +69,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.6.0 · Material 3",
+                        "v2.7.0 · Material 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -80,7 +80,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    "Professional rootless Android debloater with dual operation modes. Clean this phone on-device via Shizuku, or connect wirelessly over Wi-Fi to debloat other phones.",
+                    "Professional rootless Android debloater with dual operation modes. Clean this phone on-device via Shizuku, or connect wirelessly over Wi-Fi to debloat other phones and Android/Google TVs.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -97,6 +97,16 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AboutFeatureRow(
+                        icon = Icons.Default.Tv,
+                        title = "Android & Google TV Support",
+                        subtitle = "Auto-detects TVs and uses CleanYourTV debloat catalog (492+ models)."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.Navigation,
+                        title = "Material 3 Bottom Navigation",
+                        subtitle = "Dedicated tabs for Status/Device, Packages, and Action Log."
+                    )
+                    AboutFeatureRow(
                         icon = Icons.Default.Shield,
                         title = "100% Reversible",
                         subtitle = "Uses 'pm disable-user --user 0'. Zero data loss."
@@ -104,22 +114,17 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     AboutFeatureRow(
                         icon = Icons.Default.Devices,
                         title = "Remembered Device Profiles",
-                        subtitle = "Saves connected phones with modification history."
+                        subtitle = "Saves connected phones & TVs with modification history."
                     )
                     AboutFeatureRow(
                         icon = Icons.Default.WifiTethering,
                         title = "Wireless Discovery & Pairing",
-                        subtitle = "Auto-discovers target phones & pairing services via mDNS."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Tune,
-                        title = "Advanced App Filtering",
-                        subtitle = "Filter by All, System, User, Disabled, and Removal Tiers."
+                        subtitle = "Auto-discovers target devices & pairing services via mDNS."
                     )
                     AboutFeatureRow(
                         icon = Icons.Default.CloudDownload,
                         title = "Customizable Bloat Repositories",
-                        subtitle = "Auto and manual updates backed by UAD-ng."
+                        subtitle = "UAD-ng and CleanYourTV catalogs with manual and auto-updates."
                     )
                 }
 
@@ -132,7 +137,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "• Universal-Debloater-Alliance (UAD-ng)\n• Shizuku by Rikka\n• DADb by mobile.dev\n• ZXing QR Project",
+                    "• Universal-Debloater-Alliance (UAD-ng)\n• CleanYourTV by gathin23\n• Shizuku by Rikka\n• DADb by mobile.dev\n• ZXing QR Project",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

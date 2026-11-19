@@ -1,12 +1,12 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.6
+# 📱 CleanYourPhone v2.7.0
 
-**Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
+**Debloat Android phones & Android/Google TVs — directly on this device via Shizuku, or wirelessly connect to other phones and TVs over Wi-Fi.**
 
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B%20(API%2026)-38BDF8?style=flat-square)](#compatibility)
 [![Privilege](https://img.shields.io/badge/Modes-Shizuku%20%7C%20Wireless%20ADB-10B981?style=flat-square)](#operation-modes)
-[![Database](https://img.shields.io/badge/Database-UAD--ng%20uad__lists.json-818CF8?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
+[![Databases](https://img.shields.io/badge/Databases-UAD--ng%20%26%20CleanYourTV-818CF8?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
 [![Pairing](https://img.shields.io/badge/Wireless%20Pairing-SPAKE2%20%26%20TLS%201.3-10B981?style=flat-square)](#wireless-pairing)
 [![Design](https://img.shields.io/badge/UI-Material%20Design%203-F59E0B?style=flat-square)](#user-interface)
 [![License](https://img.shields.io/badge/License-Apache--2.0-64748B?style=flat-square)](LICENSE)
@@ -15,29 +15,36 @@
 
 ---
 
-**CleanYourPhone** is a modern, open-source Android debloater built from the ground up with **Material Design 3**. It offers a dual-engine architecture that lets you optimize your current device or connect wirelessly across your local network to debloat other phones.
+**CleanYourPhone** is a modern, open-source Android debloater built from the ground up with **Material Design 3**. It offers a dual-engine architecture that lets you optimize your current device or connect wirelessly across your local network to debloat other phones and Android/Google TVs.
 
 ---
 
-## 🚀 Two Operation Modes
+## 🌟 What's New in v2.7.0
 
-### 1. 🛡️ This Device (Shizuku Mode)
-- Debloat your phone directly without root access or a PC.
-- Uses Shizuku's privileged system binder to execute commands safely.
-- Real-time application icon rendering with high-speed memory caching.
-- Non-destructive package disabling via `pm disable-user --user 0`.
-
-### 2. 📶 Other Phone (Wireless ADB Mode)
-- **Automatic Pairing Discovery**: Listens for Android 11+ `_adb-tls-pairing._tcp` and `_adb-tls-connect._tcp` broadcasts. Automatically populates the target phone's IP and dynamic pairing port so you only have to enter the 6-digit PIN.
-- **Remembered Device Profiles**: Saves connected phones, their last known IP and port, and tracks all packages modified per device profile for instant one-tap reconnection.
-- **Dynamic Port Subnet Scanner**: Probes local Wi-Fi subnet across any target port (default 5555 or custom dynamic ports).
-- **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
-- **Robust RSA Key Pair Generation**: Generates and manages internal 2048-bit RSA keys, resolving `android/adbkey: open failed: ENOENT` permanently.
-- **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
+- **🧭 Material Design 3 Bottom Navigation Bar**:
+  - **In Shizuku Mode**:
+    - **Tab 1 (Status)**: Dedicated Shizuku service connection status view with status badge, binder access details, device app metrics overview, and an elevated **Refresh Service Status** button.
+    - **Tab 2 (Packages)**: Complete app packages debloater with search, dual-row filters, sorting, app icons, and selection controls.
+    - **Tab 3 (Action Log)**: Full-featured embedded action log displaying on-device activities with search, multi-select, and batch restore.
+  - **In Wireless Debloater Mode**:
+    - **Tab 1 (Device)**: Shows connected device info (device name, IP, port, TLS 1.3 / TCP status, Android TV badge), device stats, and a prominent **Disconnect Device** button. When disconnected, displays the 3-tab connection manager (Saved Profiles, Scan Network, Manual Connect).
+    - **Tab 2 (Packages)**: Shows packages on the remote phone or Android/Google TV with curated recommendations.
+    - **Tab 3 (Action Log)**: Full-featured embedded action log for remote ADB activities.
+- **📺 Android & Google TV Debloat Repository (CleanYourTV)**:
+  - Integrated debloat list repository from [gathin23/cleanyourtv](https://github.com/gathin23/cleanyourtv) specifically for wireless debug mode.
+  - Automatically detects Android TV and Google TV devices over ADB (via `android.software.leanback`, `android.hardware.type.television`, and build characteristics).
+  - Uses CleanYourTV's curated catalog with **2,427+ TV debloat definitions** across 492 TV models (Xiaomi, Chromecast, Sony, TCL, Hisense, Fire OS, NVIDIA Shield, and more).
+- **🔄 Auto & Manual Repository Updates**:
+  - Added manual and auto-update options in the top menu and Settings for both **Phone (UAD-ng)** and **TV (CleanYourTV)** debloat lists.
+  - Customizable repository URLs, database timestamp tracking, and definition counters.
+- **🎯 Precise Pairing Banner Placement**:
+  - The "Pairing request detected!" banner is now displayed **only on the Scan Network page**, cleanly removed from Saved Profiles and Manual Connect tabs.
+- **🏷️ Clean Saved Profiles Heading**:
+  - Removed bracketed number counts from the Saved Profiles tab and heading for a clean, consistent Material 3 aesthetic.
 
 ---
 
-## 🌟 What's New in v2.6
+## 🌟 What's New in v2.6.0
 
 - **🔐 Android 11+ Native SPAKE2 Wireless Pairing over TLS**: Full implementation of Android 11+ AOSP wireless debugging pairing handshake using SPAKE2 password-authenticated key exchange and TLS 1.3.
 - **🎯 Accurate Pairing Port & Code Auto-Population**: Automatically populates the temporary pairing port from `_adb-tls-pairing._tcp` broadcasts (e.g. `38411`), separating it from the main screen's dynamic connect port (e.g. `41255`).

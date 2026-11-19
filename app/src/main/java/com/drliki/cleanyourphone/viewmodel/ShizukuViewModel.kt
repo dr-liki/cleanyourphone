@@ -63,6 +63,27 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun updateAllDebloatLists() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _snackbar.value = "Updating debloat lists from GitHub..."
+            var uadCount = 0
+            var tvCount = 0
+            val uadRes = repo.updateFromGitHub()
+            uadRes.onSuccess { uadCount = it }
+            val tvRes = repo.updateTvFromGitHub()
+            tvRes.onSuccess { tvCount = it }
+
+            if (uadRes.isSuccess || tvRes.isSuccess) {
+                _snackbar.value = "Updated $uadCount UAD definitions & $tvCount CleanYourTV definitions!"
+                loadPackages()
+            } else {
+                _snackbar.value = "Update failed: ${uadRes.exceptionOrNull()?.message ?: tvRes.exceptionOrNull()?.message}"
+            }
+            _isLoading.value = false
+        }
+    }
+
     fun disablePackages(selected: Set<String>) {
         viewModelScope.launch {
             val targets = _packages.value.filter {

@@ -87,7 +87,8 @@ data class SavedDeviceProfile(
     val port: Int,
     val lastConnected: Long = System.currentTimeMillis(),
     val disabledPackages: List<String> = emptyList(),
-    val totalPackagesCount: Int = 0
+    val totalPackagesCount: Int = 0,
+    val isAndroidTv: Boolean = false
 )
 
 // ── Reversible action log entry ──────────────────────────────────────────────

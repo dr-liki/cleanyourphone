@@ -32,14 +32,28 @@ fun SettingsDialog(
     val settings = remember { AppSettings(context) }
     val scope = rememberCoroutineScope()
 
+    // UAD Settings State
     var repoUrl by remember { mutableStateOf(settings.uadRepoUrl) }
     var autoUpdate by remember { mutableStateOf(settings.autoUpdateOnLaunch) }
-    var isUpdating by remember { mutableStateOf(false) }
+    var isUpdatingUad by remember { mutableStateOf(false) }
     var updateResultMsg by remember { mutableStateOf<String?>(null) }
     var lastUpdateText by remember {
         mutableStateOf(
             if (settings.lastUpdateTime > 0) {
                 SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(settings.lastUpdateTime))
+            } else "Never"
+        )
+    }
+
+    // CleanYourTV Settings State
+    var tvRepoUrl by remember { mutableStateOf(settings.tvRepoUrl) }
+    var autoUpdateTv by remember { mutableStateOf(settings.autoUpdateTvOnLaunch) }
+    var isUpdatingTv by remember { mutableStateOf(false) }
+    var updateTvResultMsg by remember { mutableStateOf<String?>(null) }
+    var lastTvUpdateText by remember {
+        mutableStateOf(
+            if (settings.lastTvUpdateTime > 0) {
+                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(settings.lastTvUpdateTime))
             } else "Never"
         )
     }
@@ -69,7 +83,7 @@ fun SettingsDialog(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "Settings",
+                        "Settings & Repositories",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -77,15 +91,19 @@ fun SettingsDialog(
 
                 HorizontalDivider()
 
-                // Section 1: Bloat List Repository Link
+                // Section 1: Phone Debloat List (Universal Android Debloater)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Smartphone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Phone Debloat List (UAD-ng)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
-                        "Bloat List Repository",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Specify the raw JSON source for community debloat definitions (Universal Android Debloater format).",
+                        "Community debloat catalog for phones & tablets from Universal Android Debloater.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -96,7 +114,7 @@ fun SettingsDialog(
                             repoUrl = it
                             settings.uadRepoUrl = it
                         },
-                        label = { Text("Repository URL") },
+                        label = { Text("UAD Repository URL") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false,
                         maxLines = 3,
@@ -106,7 +124,8 @@ fun SettingsDialog(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextButton(
                             onClick = {
@@ -116,52 +135,25 @@ fun SettingsDialog(
                         ) {
                             Icon(Icons.Default.RestartAlt, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Reset to Default", style = MaterialTheme.typography.labelSmall)
+                            Text("Reset", style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Auto-update", style = MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.width(6.dp))
+                            Switch(
+                                checked = autoUpdate,
+                                onCheckedChange = {
+                                    autoUpdate = it
+                                    settings.autoUpdateOnLaunch = it
+                                }
+                            )
                         }
                     }
-                }
 
-                HorizontalDivider()
-
-                // Section 2: Automatic Updates Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "Auto-Update on Launch",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Periodically check and refresh debloat definitions in background on startup.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = autoUpdate,
-                        onCheckedChange = {
-                            autoUpdate = it
-                            settings.autoUpdateOnLaunch = it
-                        }
-                    )
-                }
-
-                HorizontalDivider()
-
-                // Section 3: Manual Update
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Database Status",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Last updated: $lastUpdateText\nCurrent catalog: ${repository.getCatalogSize()} definitions",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Last updated: $lastUpdateText · ${repository.getCatalogSize()} definitions",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
@@ -182,35 +174,153 @@ fun SettingsDialog(
                     Button(
                         onClick = {
                             scope.launch {
-                                isUpdating = true
+                                isUpdatingUad = true
                                 updateResultMsg = null
                                 repository.updateFromGitHub(repoUrl)
                                     .onSuccess { count ->
                                         lastUpdateText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
-                                        updateResultMsg = "Successfully loaded $count definitions!"
+                                        updateResultMsg = "Successfully loaded $count UAD definitions!"
                                     }
                                     .onFailure {
                                         updateResultMsg = "Update failed: ${it.message}"
                                     }
-                                isUpdating = false
+                                isUpdatingUad = false
                             }
                         },
-                        enabled = !isUpdating,
+                        enabled = !isUpdatingUad,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        if (isUpdating) {
+                        if (isUpdatingUad) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Updating Catalog...")
+                            Text("Updating UAD List...")
                         } else {
                             Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Update Bloat List Now")
+                            Text("Update Phone List Now")
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Section 2: Android TV / Google TV Debloat List (CleanYourTV)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Tv, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "TV Debloat List (CleanYourTV)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        "Debloat definitions specifically tailored for Android TV & Google TV from github.com/gathin23/cleanyourtv.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = tvRepoUrl,
+                        onValueChange = {
+                            tvRepoUrl = it
+                            settings.tvRepoUrl = it
+                        },
+                        label = { Text("CleanYourTV Repository URL") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                settings.resetTvRepoUrl()
+                                tvRepoUrl = settings.tvRepoUrl
+                            }
+                        ) {
+                            Icon(Icons.Default.RestartAlt, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Reset", style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Auto-update", style = MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.width(6.dp))
+                            Switch(
+                                checked = autoUpdateTv,
+                                onCheckedChange = {
+                                    autoUpdateTv = it
+                                    settings.autoUpdateTvOnLaunch = it
+                                }
+                            )
+                        }
+                    }
+
+                    Text(
+                        "Last updated: $lastTvUpdateText · ${repository.getTvCatalogSize()} TV definitions",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    updateTvResultMsg?.let { msg ->
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                msg,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isUpdatingTv = true
+                                updateTvResultMsg = null
+                                repository.updateTvFromGitHub(tvRepoUrl)
+                                    .onSuccess { count ->
+                                        lastTvUpdateText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
+                                        updateTvResultMsg = "Successfully loaded $count CleanYourTV definitions!"
+                                    }
+                                    .onFailure {
+                                        updateTvResultMsg = "Update failed: ${it.message}"
+                                    }
+                                isUpdatingTv = false
+                            }
+                        },
+                        enabled = !isUpdatingTv,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isUpdatingTv) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Updating TV List...")
+                        } else {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Update TV Debloat List Now")
                         }
                     }
                 }

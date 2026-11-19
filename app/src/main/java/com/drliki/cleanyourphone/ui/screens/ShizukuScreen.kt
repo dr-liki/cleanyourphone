@@ -2,8 +2,10 @@ package com.drliki.cleanyourphone.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,12 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.engine.ShizukuStatus
+import com.drliki.cleanyourphone.model.RemovalTier
 import com.drliki.cleanyourphone.ui.components.AboutDialog
+import com.drliki.cleanyourphone.ui.components.BadgePill
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
-import com.drliki.cleanyourphone.ui.components.SettingsDialog
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.viewmodel.ShizukuViewModel
 
@@ -36,9 +40,12 @@ fun ShizukuScreen(
     val snackbarMsg by viewModel.snackbar.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var selectedNavTab by remember { mutableIntStateOf(if (status is ShizukuStatus.Ready) 1 else 0) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
+
+    val activeUndoCount = actionLog.count { !it.isUndone }
 
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
@@ -90,20 +97,11 @@ fun ShizukuScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.loadPackages() }) {
+                    IconButton(onClick = {
+                        viewModel.refreshStatus()
+                        viewModel.loadPackages()
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                    IconButton(onClick = onNavigateToActionLog) {
-                        BadgedBox(
-                            badge = {
-                                val activeUndoCount = actionLog.count { !it.isUndone }
-                                if (activeUndoCount > 0) {
-                                    Badge { Text("$activeUndoCount") }
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Default.History, contentDescription = "Action Log")
-                        }
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
@@ -114,20 +112,20 @@ fun ShizukuScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Update Debloat Lists") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.updateAllDebloatLists()
+                                },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Settings") },
                                 onClick = {
                                     showMenu = false
                                     onOpenSettings()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Action Log") },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToActionLog()
-                                },
-                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("About") },
@@ -144,141 +142,90 @@ fun ShizukuScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                NavigationBarItem(
+                    selected = selectedNavTab == 0,
+                    onClick = { selectedNavTab = 0 },
+                    icon = { Icon(Icons.Default.Dns, contentDescription = null) },
+                    label = { Text("Status") }
+                )
+                NavigationBarItem(
+                    selected = selectedNavTab == 1,
+                    onClick = { selectedNavTab = 1 },
+                    icon = { Icon(Icons.Default.Apps, contentDescription = null) },
+                    label = { Text("Packages") }
+                )
+                NavigationBarItem(
+                    selected = selectedNavTab == 2,
+                    onClick = { selectedNavTab = 2 },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (activeUndoCount > 0) {
+                                    Badge { Text("$activeUndoCount") }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = null)
+                        }
+                    },
+                    label = { Text("Action Log") }
+                )
+            }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Shizuku Status Banner
-            when (status) {
-                is ShizukuStatus.NotRunning -> {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "Shizuku service is not running",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    "Start Shizuku on your phone via Wireless Debugging or PC ADB, then tap Check.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            TextButton(onClick = { viewModel.refreshStatus() }) {
-                                Text("Check")
-                            }
-                        }
-                    }
+            when (selectedNavTab) {
+                0 -> {
+                    // ── Tab 1: Shizuku Service Connection Status & Refresh ──────
+                    ShizukuStatusContent(
+                        status = status,
+                        packagesCount = packages.size,
+                        disabledCount = packages.count { !it.isEnabled },
+                        recommendedCount = packages.count { it.isEnabled && it.tier == RemovalTier.RECOMMENDED },
+                        onRefreshStatus = {
+                            viewModel.refreshStatus()
+                            viewModel.loadPackages()
+                        },
+                        onRequestPermission = { viewModel.requestPermission() },
+                        onGoToPackages = { selectedNavTab = 1 }
+                    )
                 }
-                is ShizukuStatus.PermissionNeeded -> {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Security,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "Permission Required",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    "Grant CleanYourPhone permission via Shizuku to disable packages.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = { viewModel.requestPermission() },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text("Grant")
-                            }
-                        }
-                    }
+                1 -> {
+                    // ── Tab 2: App Packages ──────────────────────────────────────
+                    PackageManagementContent(
+                        packages = packages,
+                        isLoading = isLoading,
+                        onDisablePackages = { selected ->
+                            pendingDisablePackages = selected
+                        },
+                        onEnablePackage = { pkgName ->
+                            viewModel.enablePackage(pkgName)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                is ShizukuStatus.Ready -> {
-                    val disabledCount = packages.count { !it.isEnabled }
-                    val recommendedCount = packages.count { it.isEnabled && it.tier == com.drliki.cleanyourphone.model.RemovalTier.RECOMMENDED }
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Total: ${packages.size} · Disabled: $disabledCount",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            if (recommendedCount > 0) {
-                                Text(
-                                    "$recommendedCount recommended to clean",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TierRecommended,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
+                2 -> {
+                    // ── Tab 3: Action Log ────────────────────────────────────────
+                    ActionLogContent(
+                        actionLog = actionLog,
+                        onUndoAction = { viewModel.undoAction(it) },
+                        onUndoMultipleActions = { list ->
+                            list.forEach { viewModel.undoAction(it) }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
-
-            // Package Management Content
-            PackageManagementContent(
-                packages = packages,
-                isLoading = isLoading,
-                onDisablePackages = { selected ->
-                    pendingDisablePackages = selected
-                },
-                onEnablePackage = { pkgName ->
-                    viewModel.enablePackage(pkgName)
-                },
-                modifier = Modifier.weight(1f)
-            )
         }
     }
 
@@ -327,5 +274,237 @@ fun ShizukuScreen(
     // About Dialog
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
+    }
+}
+
+@Composable
+private fun ShizukuStatusContent(
+    status: ShizukuStatus,
+    packagesCount: Int,
+    disabledCount: Int,
+    recommendedCount: Int,
+    onRefreshStatus: () -> Unit,
+    onRequestPermission: () -> Unit,
+    onGoToPackages: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Hero Service Status Card
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = when (status) {
+                    is ShizukuStatus.Ready -> TierRecommended.copy(alpha = 0.08f)
+                    is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B).copy(alpha = 0.08f)
+                    is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                }
+            )
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = when (status) {
+                            is ShizukuStatus.Ready -> TierRecommended.copy(alpha = 0.2f)
+                            is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B).copy(alpha = 0.2f)
+                            is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                        },
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                when (status) {
+                                    is ShizukuStatus.Ready -> Icons.Default.VerifiedUser
+                                    is ShizukuStatus.PermissionNeeded -> Icons.Default.Security
+                                    is ShizukuStatus.NotRunning -> Icons.Default.Warning
+                                },
+                                contentDescription = null,
+                                tint = when (status) {
+                                    is ShizukuStatus.Ready -> TierRecommended
+                                    is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B)
+                                    is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.error
+                                },
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
+                    BadgePill(
+                        label = status.label,
+                        color = when (status) {
+                            is ShizukuStatus.Ready -> TierRecommended
+                            is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B)
+                            is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.error
+                        },
+                        bgColor = when (status) {
+                            is ShizukuStatus.Ready -> TierRecommended.copy(alpha = 0.15f)
+                            is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B).copy(alpha = 0.15f)
+                            is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = when (status) {
+                        is ShizukuStatus.Ready -> "Shizuku Service Running"
+                        is ShizukuStatus.PermissionNeeded -> "Permission Required"
+                        is ShizukuStatus.NotRunning -> "Shizuku Service Not Running"
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = when (status) {
+                        is ShizukuStatus.Ready -> "Privileged binder connection is active and authorized. You can safely freeze and disable packages on this device without root."
+                        is ShizukuStatus.PermissionNeeded -> "Shizuku is running in the background, but CleanYourPhone has not been granted debloater permission yet."
+                        is ShizukuStatus.NotRunning -> "Shizuku is not running on this phone. Start the Shizuku app using Wireless Debugging or a PC command."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                when (status) {
+                    is ShizukuStatus.PermissionNeeded -> {
+                        Button(
+                            onClick = onRequestPermission,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Grant Shizuku Permission")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    is ShizukuStatus.NotRunning -> {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(
+                                    "How to start Shizuku:",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "1. Open the Shizuku app\n2. Tap 'Start via Wireless Debugging' (or connect via PC)\n3. Tap 'Refresh Service Status' below once started",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    is ShizukuStatus.Ready -> {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Binder Access", style = MaterialTheme.typography.bodySmall)
+                                Text("Granted (UID 2000)", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TierRecommended)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+
+                // Primary Refresh Button
+                FilledTonalButton(
+                    onClick = onRefreshStatus,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Refresh Service Status")
+                }
+            }
+        }
+
+        // Summary Statistics Card
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Device App Overview",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatBox(label = "Total Apps", value = "$packagesCount", color = MaterialTheme.colorScheme.primary)
+                    StatBox(label = "Disabled", value = "$disabledCount", color = MaterialTheme.colorScheme.secondary)
+                    StatBox(label = "Recommended", value = "$recommendedCount", color = TierRecommended)
+                }
+            }
+        }
+
+        // Action: Jump to Packages
+        Button(
+            onClick = onGoToPackages,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("View & Manage Packages", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.ArrowForward, contentDescription = null, Modifier.size(18.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun RowScope.StatBox(label: String, value: String, color: Color) {
+    Surface(
+        modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
+            Spacer(Modifier.height(2.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

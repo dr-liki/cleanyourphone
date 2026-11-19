@@ -16,9 +16,14 @@ class AppSettings(context: Context) {
     companion object {
         const val DEFAULT_UAD_REPO_URL =
             "https://raw.githubusercontent.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/main/resources/assets/uad_lists.json"
+        const val DEFAULT_TV_REPO_URL =
+            "https://raw.githubusercontent.com/dr-liki/cleanyourphone/main/app/src/main/assets/cleanyourtv_lists_seed.json"
         private const val KEY_UAD_REPO_URL = "uad_repo_url"
+        private const val KEY_TV_REPO_URL = "tv_repo_url"
         private const val KEY_AUTO_UPDATE = "auto_update_on_launch"
+        private const val KEY_AUTO_UPDATE_TV = "auto_update_tv_on_launch"
         private const val KEY_LAST_UPDATE_TIME = "last_update_time"
+        private const val KEY_LAST_TV_UPDATE_TIME = "last_tv_update_time"
         private const val KEY_SAVED_PROFILES = "saved_device_profiles"
     }
 
@@ -33,16 +38,39 @@ class AppSettings(context: Context) {
         prefs.edit().putString(KEY_UAD_REPO_URL, DEFAULT_UAD_REPO_URL).apply()
     }
 
+    var tvRepoUrl: String
+        get() = prefs.getString(KEY_TV_REPO_URL, DEFAULT_TV_REPO_URL)?.ifBlank { DEFAULT_TV_REPO_URL }
+            ?: DEFAULT_TV_REPO_URL
+        set(value) {
+            prefs.edit().putString(KEY_TV_REPO_URL, value.trim()).apply()
+        }
+
+    fun resetTvRepoUrl() {
+        prefs.edit().putString(KEY_TV_REPO_URL, DEFAULT_TV_REPO_URL).apply()
+    }
+
     var autoUpdateOnLaunch: Boolean
         get() = prefs.getBoolean(KEY_AUTO_UPDATE, false)
         set(value) {
             prefs.edit().putBoolean(KEY_AUTO_UPDATE, value).apply()
         }
 
+    var autoUpdateTvOnLaunch: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_UPDATE_TV, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_UPDATE_TV, value).apply()
+        }
+
     var lastUpdateTime: Long
         get() = prefs.getLong(KEY_LAST_UPDATE_TIME, 0L)
         set(value) {
             prefs.edit().putLong(KEY_LAST_UPDATE_TIME, value).apply()
+        }
+
+    var lastTvUpdateTime: Long
+        get() = prefs.getLong(KEY_LAST_TV_UPDATE_TIME, 0L)
+        set(value) {
+            prefs.edit().putLong(KEY_LAST_TV_UPDATE_TIME, value).apply()
         }
 
     fun getSavedProfiles(): List<SavedDeviceProfile> {

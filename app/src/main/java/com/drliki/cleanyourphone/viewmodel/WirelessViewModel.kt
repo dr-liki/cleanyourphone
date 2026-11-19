@@ -43,6 +43,9 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private val _connectedName = MutableStateFlow("")
     val connectedName = _connectedName.asStateFlow()
 
+    private val _isAndroidTv = MutableStateFlow(false)
+    val isAndroidTv = _isAndroidTv.asStateFlow()
+
     // ── Package state ────────────────────────────────────────────────────────
     private val _packages = MutableStateFlow<List<DevicePackage>>(emptyList())
     val packages = _packages.asStateFlow()
@@ -122,9 +125,13 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             engine.connect(device)
                 .onSuccess { msg ->
                     _isConnected.value = true
-                    val deviceName = engine.connectedDevice?.name ?: device.name
+                    val isTv = engine.detectIsAndroidTv()
+                    _isAndroidTv.value = isTv
+
+                    val rawName = engine.connectedDevice?.name ?: device.name
+                    val deviceName = if (isTv && !rawName.contains("TV", ignoreCase = true)) "$rawName (Android TV)" else rawName
                     _connectedName.value = deviceName
-                    _snackbar.value = msg
+                    _snackbar.value = if (isTv) "$msg — Android/Google TV detected! CleanYourTV debloat list active." else msg
 
                     // Persist connected device profile
                     settings.saveProfile(
@@ -132,7 +139,8 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                             name = deviceName,
                             host = device.host,
                             port = device.port,
-                            lastConnected = System.currentTimeMillis()
+                            lastConnected = System.currentTimeMillis(),
+                            isAndroidTv = isTv
                         )
                     )
                     refreshSavedProfiles()
@@ -144,6 +152,7 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun connectToProfile(profile: SavedDeviceProfile) {
+        _isAndroidTv.value = profile.isAndroidTv
         connectTo(DiscoveredDevice(profile.host, profile.port, profile.name, profile.name))
     }
 
@@ -171,16 +180,21 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 engine.connect(DiscoveredDevice(host, targetPort, "Remote Phone ($host)", "Android Phone"))
                     .onSuccess {
                         _isConnected.value = true
-                        val deviceName = engine.connectedDevice?.name ?: "Remote Phone"
+                        val isTv = engine.detectIsAndroidTv()
+                        _isAndroidTv.value = isTv
+
+                        val rawName = engine.connectedDevice?.name ?: "Remote Device"
+                        val deviceName = if (isTv && !rawName.contains("TV", ignoreCase = true)) "$rawName (Android TV)" else rawName
                         _connectedName.value = deviceName
-                        _snackbar.value = "Connected to $deviceName ($host:$targetPort)!"
+                        _snackbar.value = if (isTv) "Connected to $deviceName ($host:$targetPort)! CleanYourTV debloat list active." else "Connected to $deviceName ($host:$targetPort)!"
 
                         settings.saveProfile(
                             SavedDeviceProfile(
                                 name = deviceName,
                                 host = host,
                                 port = targetPort,
-                                lastConnected = System.currentTimeMillis()
+                                lastConnected = System.currentTimeMillis(),
+                                isAndroidTv = isTv
                             )
                         )
                         refreshSavedProfiles()
@@ -200,6 +214,7 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
         engine.disconnect()
         _isConnected.value = false
         _connectedName.value = ""
+        _isAndroidTv.value = false
         _packages.value = emptyList()
         _snackbar.value = "Disconnected"
     }
@@ -209,7 +224,8 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             _isLoading.value = true
             engine.listPackages()
                 .onSuccess { pkgs ->
-                    val resolved = repo.resolveRemotePackages(pkgs)
+                    val isTv = _isAndroidTv.value
+                    val resolved = repo.resolveRemotePackages(pkgs, isTv = isTv)
                     _packages.value = resolved
 
                     // Update total count in saved profile
@@ -235,6 +251,45 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 .onFailure { _snackbar.value = "Failed to update catalog: ${it.message}" }
+            _isLoading.value = false
+        }
+    }
+
+    fun updateTvLists() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _snackbar.value = "Updating CleanYourTV definitions from GitHub..."
+            repo.updateTvFromGitHub()
+                .onSuccess { count ->
+                    _snackbar.value = "Updated $count TV package definitions from CleanYourTV!"
+                    if (_isConnected.value) {
+                        loadRemotePackages()
+                    }
+                }
+                .onFailure { _snackbar.value = "Failed to update TV catalog: ${it.message}" }
+            _isLoading.value = false
+        }
+    }
+
+    fun updateAllDebloatLists() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _snackbar.value = "Updating debloat lists from GitHub..."
+            var uadCount = 0
+            var tvCount = 0
+            val uadRes = repo.updateFromGitHub()
+            uadRes.onSuccess { uadCount = it }
+            val tvRes = repo.updateTvFromGitHub()
+            tvRes.onSuccess { tvCount = it }
+
+            if (uadRes.isSuccess || tvRes.isSuccess) {
+                _snackbar.value = "Updated $uadCount UAD definitions & $tvCount CleanYourTV definitions!"
+                if (_isConnected.value) {
+                    loadRemotePackages()
+                }
+            } else {
+                _snackbar.value = "Update failed: ${uadRes.exceptionOrNull()?.message ?: tvRes.exceptionOrNull()?.message}"
+            }
             _isLoading.value = false
         }
     }

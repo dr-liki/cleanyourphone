@@ -250,6 +250,28 @@ class AdbEngine(private val context: Context) {
     suspend fun enablePackage(pkg: String): Result<String> =
         shell("pm enable --user 0 $pkg")
 
+    /**
+     * Detects if the connected remote device is an Android TV / Google TV.
+     */
+    suspend fun detectIsAndroidTv(): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val features = shell("pm list features").getOrDefault("")
+            if (features.contains("android.software.leanback") || features.contains("android.hardware.type.television")) {
+                return@runCatching true
+            }
+            val chars = shell("getprop ro.build.characteristics").getOrDefault("")
+            if (chars.contains("tv", ignoreCase = true)) {
+                return@runCatching true
+            }
+            val model = shell("getprop ro.product.model").getOrDefault("")
+            if (model.contains("TV", ignoreCase = true) || model.contains("Chromecast", ignoreCase = true) ||
+                model.contains("MiBox", ignoreCase = true) || model.contains("SHIELD", ignoreCase = true)) {
+                return@runCatching true
+            }
+            false
+        }.getOrDefault(false)
+    }
+
     // ── Pairing Verification Helper ──────────────────────────────────────────
     suspend fun verifyPairingPort(host: String, pairingPort: Int): Boolean =
         withContext(Dispatchers.IO) {
