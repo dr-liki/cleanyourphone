@@ -23,8 +23,8 @@ android {
         applicationId = "com.drliki.cleanyourphone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "2.5.0"
+        versionCode = 8
+        versionName = "2.6.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -95,7 +95,13 @@ android {
                 "META-INF/LICENSE",
                 "META-INF/*.kotlin_module",
                 "META-INF/AL2.0",
-                "META-INF/LGPL2.1"
+                "META-INF/LGPL2.1",
+                "META-INF/INDEX.LIST",
+                "META-INF/io.netty.versions.properties",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "META-INF/*.DSA",
+                "META-INF/*.SF",
+                "META-INF/*.RSA"
             )
         }
     }
@@ -124,6 +130,12 @@ dependencies {
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
     implementation("dev.mobile:dadb:1.2.8")
+
+    // Pure Kotlin ADB engine with TLS 1.3 & SPAKE2 wireless pairing
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bctls-jdk18on:1.78.1")
+    implementation("com.squareup.okio:okio:3.9.0")
 
     // QR code generation for Android 11+ Wireless Debugging pairing
     implementation("com.google.zxing:core:3.5.3")

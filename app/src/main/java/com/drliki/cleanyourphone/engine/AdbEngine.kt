@@ -6,6 +6,8 @@ import android.net.nsd.NsdServiceInfo
 import com.drliki.cleanyourphone.model.DiscoveredDevice
 import dadb.AdbKeyPair
 import dadb.Dadb
+import io.github.rhythmcache.adb.AdbClient
+import io.github.rhythmcache.adb.FileKeyProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -26,11 +28,12 @@ data class DiscoveredPairingService(
 
 class AdbEngine(private val context: Context) {
 
-    private var connection: Dadb? = null
+    private var client: AdbClient? = null
+    private var dadbConnection: Dadb? = null
     var connectedDevice: DiscoveredDevice? = null
         private set
 
-    val isConnected: Boolean get() = connection != null
+    val isConnected: Boolean get() = (client != null && !(client?.isClosed ?: true)) || dadbConnection != null
 
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
     private var connectDiscoveryListener: NsdManager.DiscoveryListener? = null
@@ -42,6 +45,16 @@ class AdbEngine(private val context: Context) {
         System.setProperty("user.home", context.filesDir.absolutePath)
         // Pre-generate ADB RSA 2048 keypair in internal storage so it's instantly ready
         getOrCreateKeyPair()
+    }
+
+    /**
+     * Returns an AdbKeyProvider backed by internal writable storage.
+     */
+    fun getKeyProvider(): FileKeyProvider {
+        val dotAndroid = File(context.filesDir, ".android").apply { if (!exists()) mkdirs() }
+        val priv = File(dotAndroid, "adbkey")
+        val pub = File(dotAndroid, "adbkey.pub")
+        return FileKeyProvider(priv, pub, identityComment = "CleanYourPhone")
     }
 
     /**
@@ -60,58 +73,132 @@ class AdbEngine(private val context: Context) {
         return AdbKeyPair.read(priv, pub)
     }
 
-    // ── Connection creation ──────────────────────────────────────────────────
+    // ── Connection creation for dadb fallback ────────────────────────────────
     private fun createDadb(host: String, port: Int): Dadb {
         val keyPair = getOrCreateKeyPair()
         return Dadb.create(host, port, keyPair)
     }
 
-    // ── Connection with Authorization Polling Retry Loop ─────────────────────
+    // ── Android 11+ SPAKE2 Pairing over TLS ──────────────────────────────────
+    /**
+     * Pairs with the target phone using the 6-digit PIN and the temporary pairing port.
+     * Android 11+ uses SPAKE2 over TLS on the pairing port advertised by _adb-tls-pairing._tcp.
+     */
+    suspend fun pair(host: String, pairingPort: Int, pairingCode: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val keyProvider = getKeyProvider()
+                val result = AdbClient.pairTls(
+                    host = host,
+                    port = pairingPort,
+                    pairingCode = pairingCode.trim(),
+                    keyProvider = keyProvider
+                )
+                if (result.isFailure) {
+                    val err = result.exceptionOrNull()?.message ?: "Pairing handshake failed"
+                    throw IllegalStateException("Pairing failed: $err. Make sure the 'Pair device with pairing code' popup remains open on the other phone and verify the 6-digit code.")
+                }
+                "Device paired successfully with 6-digit code!"
+            }
+        }
+
+    // ── Connection with TLS and TCP Multi-Mode Support ───────────────────────
     suspend fun connect(device: DiscoveredDevice): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 disconnect()
 
-                var lastError: Throwable? = null
+                val keyProvider = getKeyProvider()
+                var activeClient: AdbClient? = null
                 var activeDadb: Dadb? = null
+                var lastError: Throwable? = null
 
-                // Retry loop: up to 10 attempts (15 seconds total)
-                // Allows user time to see prompt and tap "Always allow" on target phone
-                for (attempt in 1..10) {
+                val isPort5555 = device.port == 5555
+
+                // Polling retry loop: up to 8 attempts (with 1.2s delay between attempts)
+                for (attempt in 1..8) {
                     try {
-                        val candidate = createDadb(device.host, device.port)
-                        val resp = candidate.shell("echo ok")
-                        if (resp.output.contains("ok")) {
-                            activeDadb = candidate
-                            break
+                        if (!isPort5555) {
+                            // On dynamic port, attempt TLS 1.3 first (standard Android 11+ Wireless Debugging)
+                            try {
+                                val c = AdbClient.connectTls(device.host, device.port, keyProvider, handshakeTimeoutMs = 6000)
+                                val resp = c.shell("echo ok")
+                                if (resp.stdoutText.contains("ok")) {
+                                    activeClient = c
+                                    break
+                                } else {
+                                    try { c.close() } catch (_: Exception) {}
+                                }
+                            } catch (tlsEx: Exception) {
+                                lastError = tlsEx
+                                // Fall back to plain TCP in case the custom port is unencrypted
+                                try {
+                                    val c = AdbClient.connectTcp(device.host, device.port, keyProvider, handshakeTimeoutMs = 4000)
+                                    val resp = c.shell("echo ok")
+                                    if (resp.stdoutText.contains("ok")) {
+                                        activeClient = c
+                                        break
+                                    } else {
+                                        try { c.close() } catch (_: Exception) {}
+                                    }
+                                } catch (_: Exception) {}
+                            }
                         } else {
-                            try { candidate.close() } catch (_: Exception) { }
+                            // Port 5555: plain TCP
+                            try {
+                                val c = AdbClient.connectTcp(device.host, device.port, keyProvider, handshakeTimeoutMs = 5000)
+                                val resp = c.shell("echo ok")
+                                if (resp.stdoutText.contains("ok")) {
+                                    activeClient = c
+                                    break
+                                } else {
+                                    try { c.close() } catch (_: Exception) {}
+                                }
+                            } catch (e: Exception) {
+                                lastError = e
+                                // Fallback to dadb for port 5555 if needed
+                                try {
+                                    val d = createDadb(device.host, device.port)
+                                    val resp = d.shell("echo ok")
+                                    if (resp.output.contains("ok")) {
+                                        activeDadb = d
+                                        break
+                                    } else {
+                                        try { d.close() } catch (_: Exception) {}
+                                    }
+                                } catch (_: Exception) {}
+                            }
                         }
                     } catch (e: Exception) {
                         lastError = e
                         val msg = e.message ?: ""
-                        // If connection refused immediately on first attempt, the port is simply closed / wrong
-                        if (attempt == 1 && (msg.contains("ECONNREFUSED", ignoreCase = true) ||
-                                             msg.contains("Connection refused", ignoreCase = true))) {
-                            throw IllegalStateException("Connection refused on ${device.host}:${device.port}. Verify Wireless Debugging is turned ON in Developer Options and check the port.")
+                        if (attempt == 1 && (msg.contains("ECONNREFUSED", ignoreCase = true) || msg.contains("Connection refused", ignoreCase = true))) {
+                            throw IllegalStateException("Connection refused on ${device.host}:${device.port}. Verify Wireless Debugging is turned ON in Developer Options.")
                         }
                     }
-                    delay(1500)
+                    delay(1200)
                 }
 
-                if (activeDadb == null) {
+                if (activeClient == null && activeDadb == null) {
                     val rawErr = lastError?.message ?: "Handshake timed out"
-                    if (rawErr.contains("ECONNRESET", ignoreCase = true) || rawErr.contains("Connection reset", ignoreCase = true)) {
-                        throw IllegalStateException("Connection reset by ${device.host}:${device.port}. Note: Make sure to enter the Connect Port (e.g. 41255) from the main Wireless Debugging screen, NOT the temporary pairing port.")
+                    if (!isPort5555) {
+                        throw IllegalStateException("Connection failed on dynamic port ${device.host}:${device.port}. Android 11+ dynamic ports require pairing with the 6-digit code first. Open 'Pair device with pairing code' on the other phone and tap 'Pair Device' in CleanYourPhone. (Details: $rawErr)")
+                    } else {
+                        throw IllegalStateException("Connection failed on ${device.host}:${device.port}: $rawErr. Please check target phone screen and tap 'Always allow'.")
                     }
-                    throw IllegalStateException("Connection failed on ${device.host}:${device.port}: $rawErr. Please check target phone screen and tap 'Always allow'.")
                 }
 
-                connection = activeDadb
+                client = activeClient
+                dadbConnection = activeDadb
                 connectedDevice = device
 
                 val model = try {
-                    activeDadb.shell("getprop ro.product.model").output.trim().ifBlank { device.name }
+                    if (activeClient != null) {
+                        val res = activeClient.shell("getprop ro.product.model")
+                        res.stdoutText.trim().ifBlank { device.name }
+                    } else {
+                        activeDadb?.shell("getprop ro.product.model")?.output?.trim()?.ifBlank { device.name } ?: device.name
+                    }
                 } catch (_: Exception) { device.name }
 
                 "Connected to $model (${device.host}:${device.port})"
@@ -119,27 +206,38 @@ class AdbEngine(private val context: Context) {
         }
 
     fun disconnect() {
-        try { connection?.close() } catch (_: Exception) { }
-        connection = null
+        try { client?.close() } catch (_: Exception) { }
+        try { dadbConnection?.close() } catch (_: Exception) { }
+        client = null
+        dadbConnection = null
         connectedDevice = null
     }
 
     // ── Shell commands on connected device ───────────────────────────────────
     suspend fun shell(command: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            val adb = connection ?: throw IllegalStateException("Not connected")
-            val resp = adb.shell(command)
-            if (resp.exitCode != 0) {
-                throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.output.trim()}")
+            val c = client
+            if (c != null) {
+                val resp = c.shell(command)
+                if (resp.exitCode != 0) {
+                    throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.stderrText.trim().ifBlank { resp.stdoutText.trim() }}")
+                }
+                resp.stdoutText.trim()
+            } else {
+                val d = dadbConnection ?: throw IllegalStateException("Not connected")
+                val resp = d.shell(command)
+                if (resp.exitCode != 0) {
+                    throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.output.trim()}")
+                }
+                resp.output.trim()
             }
-            resp.output.trim()
         }
     }
 
     suspend fun listPackages(): Result<List<String>> = withContext(Dispatchers.IO) {
         runCatching {
-            val adb = connection ?: throw IllegalStateException("Not connected")
-            adb.shell("pm list packages").output.lines()
+            val output = shell("pm list packages").getOrThrow()
+            output.lines()
                 .filter { it.startsWith("package:") }
                 .map { it.removePrefix("package:").trim() }
                 .filter { it.isNotBlank() }

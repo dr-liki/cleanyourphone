@@ -484,20 +484,19 @@ fun WirelessScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            AnimatedVisibility(visible = manualPairingPort.isNotBlank()) {
-                                OutlinedTextField(
-                                    value = manualPairingCode,
-                                    onValueChange = { manualPairingCode = it },
-                                    label = { Text("6-Digit Pairing Code (from other phone dialog)") },
-                                    placeholder = { Text("e.g. 123456") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(64.dp),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                            }
+                            // Pairing Code Input (Always accessible for manual pairing)
+                            OutlinedTextField(
+                                value = manualPairingCode,
+                                onValueChange = { manualPairingCode = it },
+                                label = { Text("6-Digit Pairing Code (from other phone popup)") },
+                                placeholder = { Text("e.g. 123456 (leave blank if already paired)") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp)
+                            )
 
                             if (manualPairingCode.isNotBlank() && manualPairingPort.isNotBlank()) {
                                 Button(
@@ -528,6 +527,19 @@ fun WirelessScreen(
                                 ) {
                                     if (isLoading) {
                                         CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Connecting...")
+                                    } else {
+                                        Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Connect to Remote Phone")
+                                    }
+                                }
+                            }
                                             modifier = Modifier.size(18.dp),
                                             strokeWidth = 2.dp,
                                             color = MaterialTheme.colorScheme.onPrimary
@@ -633,6 +645,9 @@ fun WirelessScreen(
             onRegenerateQr = { viewModel.generateNewPairingCredentials() },
             onPairWithCode = { h, pPort, code, cPort ->
                 viewModel.pairWithCode(h, pPort, code, cPort)
+            },
+            onDirectConnect = { h, p ->
+                viewModel.connectManual(h, p)
             },
             onDismiss = { showPairingDialog = false }
         )

@@ -1,13 +1,13 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.5
+# 📱 CleanYourPhone v2.6
 
 **Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
 
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B%20(API%2026)-38BDF8?style=flat-square)](#compatibility)
 [![Privilege](https://img.shields.io/badge/Modes-Shizuku%20%7C%20Wireless%20ADB-10B981?style=flat-square)](#operation-modes)
 [![Database](https://img.shields.io/badge/Database-UAD--ng%20uad__lists.json-818CF8?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
-[![Pairing](https://img.shields.io/badge/Wireless%20Pairing-QR%20%26%20PIN-10B981?style=flat-square)](#wireless-pairing)
+[![Pairing](https://img.shields.io/badge/Wireless%20Pairing-SPAKE2%20%26%20TLS%201.3-10B981?style=flat-square)](#wireless-pairing)
 [![Design](https://img.shields.io/badge/UI-Material%20Design%203-F59E0B?style=flat-square)](#user-interface)
 [![License](https://img.shields.io/badge/License-Apache--2.0-64748B?style=flat-square)](LICENSE)
 
@@ -34,6 +34,17 @@
 - **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
 - **Robust RSA Key Pair Generation**: Generates and manages internal 2048-bit RSA keys, resolving `android/adbkey: open failed: ENOENT` permanently.
 - **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
+
+---
+
+## 🌟 What's New in v2.6
+
+- **🔐 Android 11+ Native SPAKE2 Wireless Pairing over TLS**: Full implementation of Android 11+ AOSP wireless debugging pairing handshake using SPAKE2 password-authenticated key exchange and TLS 1.3.
+- **🎯 Accurate Pairing Port & Code Auto-Population**: Automatically populates the temporary pairing port from `_adb-tls-pairing._tcp` broadcasts (e.g. `38411`), separating it from the main screen's dynamic connect port (e.g. `41255`).
+- **🔢 6-Digit Wi-Fi Pairing Code Input**: Restored and prominently featured the 6-digit Wi-Fi pairing code input field with numeric keypad and monospace styling across the pairing dialog and manual connect screens.
+- **⚡ Dynamic TLS 1.3 + Plain TCP Port 5555 Multi-Engine**: Seamlessly connects to Android 11+ dynamic ports via TLS 1.3 using authenticated client certificates, while retaining full support for classic unencrypted ADB on port 5555.
+- **💡 Actionable Dynamic Port Guidance**: Replaced cryptic socket resets with clear, helpful instructions when an unpaired device attempts to connect directly to dynamic ports.
+- **📱 Three-Tab Pairing & Connection Dialog**: Seamlessly switch between "Pair Code" (6-digit PIN + auto-discovered ports), "Direct (5555)" (one-tap connect without pairing), and "QR Code" (visual code for target phone camera scanning).
 
 ---
 

@@ -22,3 +22,14 @@
 # ZXing for QR code generation
 -keep class com.google.zxing.** { *; }
 -dontwarn com.google.zxing.**
+
+# BouncyCastle TLS & Crypto
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+
+# Okio
+-dontwarn okio.**
+
+# Pure Kotlin ADB & SPAKE2
+-keep class io.github.rhythmcache.adb.** { *; }
+-keep class io.github.rhythmache.spake2.** { *; }

@@ -161,8 +161,37 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun pairWithCode(host: String, pairingPort: Int, code: String, connectPort: Int) {
         viewModelScope.launch {
             _isLoading.value = true
-            _snackbar.value = "Connecting to $host:$connectPort (check target phone screen)..."
-            connectTo(DiscoveredDevice(host, connectPort, "Remote Phone ($host)", "Android Phone"))
+            _snackbar.value = "Pairing with $host:$pairingPort using code $code..."
+
+            val pairRes = engine.pair(host, pairingPort, code)
+            pairRes.onSuccess { pairMsg ->
+                val targetPort = if (connectPort > 0) connectPort else pairingPort
+                _snackbar.value = "$pairMsg Connecting to $host:$targetPort..."
+
+                engine.connect(DiscoveredDevice(host, targetPort, "Remote Phone ($host)", "Android Phone"))
+                    .onSuccess {
+                        _isConnected.value = true
+                        val deviceName = engine.connectedDevice?.name ?: "Remote Phone"
+                        _connectedName.value = deviceName
+                        _snackbar.value = "Connected to $deviceName ($host:$targetPort)!"
+
+                        settings.saveProfile(
+                            SavedDeviceProfile(
+                                name = deviceName,
+                                host = host,
+                                port = targetPort,
+                                lastConnected = System.currentTimeMillis()
+                            )
+                        )
+                        refreshSavedProfiles()
+                        loadRemotePackages()
+                    }
+                    .onFailure { connErr ->
+                        _snackbar.value = "Paired! But connection to port $targetPort failed: ${connErr.message}. Ensure Connect Port under 'IP address & Port' on other phone matches."
+                    }
+            }.onFailure { pairErr ->
+                _snackbar.value = pairErr.message ?: "Pairing failed. Keep the pairing dialog open on the other phone."
+            }
             _isLoading.value = false
         }
     }
