@@ -296,7 +296,187 @@ class UadRepository(private val context: Context) {
             "com.truecaller" to "Truecaller",
             "com.shazam.android" to "Shazam",
             "com.booking" to "Booking.com",
-            "com.king.candycrushsaga" to "Candy Crush Saga"
+            "com.king.candycrushsaga" to "Candy Crush Saga",
+
+            // ── Popular User-Installed Apps (Media, Tools, Browsers, Social, TV, Games) ──
+            "org.videolan.vlc" to "VLC Media Player",
+            "com.mxtech.videoplayer.ad" to "MX Player",
+            "com.mxtech.videoplayer.pro" to "MX Player Pro",
+            "org.xbmc.kodi" to "Kodi",
+            "com.plexapp.android" to "Plex",
+            "com.mb.android" to "Emby",
+            "org.jellyfin.mobile" to "Jellyfin",
+            "org.jellyfin.androidtv" to "Jellyfin for Android TV",
+            "com.stremio.one" to "Stremio",
+            "com.teamsmart.videomanager.tv" to "SmartTube",
+            "com.liskovsoft.videomanager" to "SmartTube Next",
+            "app.revanced.android.youtube" to "YouTube ReVanced",
+            "app.revanced.manager.flutter" to "ReVanced Manager",
+            "org.schabi.newpipe" to "NewPipe",
+            "com.futo.platformplayer" to "Grayjay",
+            "com.maxmpz.audioplayer" to "Poweramp",
+            "com.maxmpz.audioplayer.unlock" to "Poweramp Full Version Unlocker",
+            "in.krosbits.musicolet" to "Musicolet Music Player",
+            "code.name.monkey.retromusic" to "Retro Music Player",
+            "it.vfsfitvnm.vimusic" to "ViMusic",
+            "com.zionhuang.music" to "InnerTune",
+            "com.aspiro.tidal" to "Tidal",
+            "deezer.android.app" to "Deezer",
+            "com.soundcloud.android" to "SoundCloud",
+            "com.apple.android.music" to "Apple Music",
+            "au.com.shiftyjelly.pocketcasts" to "Pocket Casts",
+            "de.danoeh.antennapod" to "AntennaPod",
+            "com.brouken.player" to "Just Player",
+            "is.xyz.mpv" to "mpv-android",
+            "org.courville.nova" to "Nova Video Player",
+
+            // Browsers
+            "com.brave.browser" to "Brave Browser",
+            "com.brave.browser_nightly" to "Brave Nightly",
+            "com.brave.browser_beta" to "Brave Beta",
+            "org.mozilla.firefox" to "Firefox",
+            "org.mozilla.firefox_beta" to "Firefox Beta",
+            "org.mozilla.fenix" to "Firefox Nightly",
+            "org.mozilla.focus" to "Firefox Focus",
+            "com.opera.browser" to "Opera Browser",
+            "com.opera.mini.native" to "Opera Mini",
+            "com.opera.gx" to "Opera GX",
+            "com.opera.touch" to "Opera Touch",
+            "com.vivaldi.browser" to "Vivaldi Browser",
+            "com.duckduckgo.mobile.android" to "DuckDuckGo Privacy Browser",
+            "com.microsoft.emmx" to "Microsoft Edge",
+            "com.kiwibrowser.browser" to "Kiwi Browser",
+            "org.torproject.torbrowser" to "Tor Browser",
+            "org.torproject.torbrowser_alpha" to "Tor Browser Alpha",
+            "com.UCMobile.intl" to "UC Browser",
+            "com.phlox.tvwebbrowser" to "TV Bro",
+
+            // File Managers, Tools & Utilities
+            "com.lonelycatgames.Xplore" to "X-plore File Manager",
+            "com.ghisler.android.TotalCommander" to "Total Commander",
+            "pl.solidexplorer2" to "Solid Explorer",
+            "com.mixplorer" to "MiXplorer",
+            "com.mixplorer.silver" to "MiXplorer Silver",
+            "nextapp.fx" to "FX File Explorer",
+            "com.cxinventor.file.explorer" to "Cx File Explorer",
+            "com.speedsoftware.rootexplorer" to "Root Explorer",
+            "com.speedsoftware.explorer" to "Explorer",
+            "com.estrongs.android.pop" to "ES File Explorer",
+            "ru.zdevs.zarchiver" to "ZArchiver",
+            "ru.zdevs.zarchiver.pro" to "ZArchiver Pro",
+            "com.rarlab.rar" to "RAR",
+            "com.termux" to "Termux",
+            "com.termux.api" to "Termux:API",
+            "org.fdroid.fdroid" to "F-Droid",
+            "org.fdroid.fdroid.privileged.ota" to "F-Droid Privileged Extension",
+            "com.aurora.store" to "Aurora Store",
+            "com.aurora.droid" to "Aurora Droid",
+            "moe.shizuku.privileged.api" to "Shizuku",
+            "eu.thedarken.sdm" to "SD Maid",
+            "eu.thedarken.sdm.cleanup" to "SD Maid 2 / SE",
+            "io.github.muntashirakon.AppManager" to "App Manager",
+            "com.topjohnwu.magisk" to "Magisk",
+            "me.weishu.kernelsu" to "KernelSU",
+            "org.zwanoo.android.speedtest" to "Speedtest by Ookla",
+            "com.speedchecker.android.speedchecker" to "Speed Checker",
+            "com.yablio.sendfilestotv" to "Send Files to TV",
+            "info.androidtv.downloader" to "Downloader by AFTVnews",
+            "flar2.homebutton" to "Button Mapper",
+            "com.spocky.projengmenu" to "Projectivy Launcher",
+            "me.efesser.flauncher" to "FLauncher",
+            "ca.dstudio.atvlauncher.pro" to "ATV Launcher Pro",
+            "ca.dstudio.atvlauncher.free" to "ATV Launcher",
+            "com.teslacoilsw.launcher" to "Nova Launcher",
+            "com.teslacoilsw.launcher.prime" to "Nova Launcher Prime",
+            "bitpit.launcher" to "Niagara Launcher",
+            "ginlemon.flowerfree" to "Smart Launcher",
+
+            // Social & Communication
+            "com.whatsapp.w4b" to "WhatsApp Business",
+            "org.thunderdog.challegram" to "Telegram X",
+            "org.thoughtcrime.securesms" to "Signal",
+            "com.reddit.frontpage" to "Reddit",
+            "com.rubenmayayo.reddit" to "Boost for Reddit",
+            "ml.docilealligator.infinityforreddit" to "Infinity for Reddit",
+            "com.laurencedawson.reddit_sync" to "Sync for Reddit",
+            "com.slack" to "Slack",
+            "com.instagram.barcelona" to "Threads",
+            "com.facebook.mlite" to "Messenger Lite",
+            "com.facebook.lite" to "Facebook Lite",
+            "com.pinterest" to "Pinterest",
+            "com.tumblr" to "Tumblr",
+            "com.viber.voip" to "Viber",
+            "jp.naver.line.android" to "LINE",
+            "com.tencent.mm" to "WeChat",
+            "com.vkontakte.android" to "VK",
+
+            // Gaming, Streaming & Emulators
+            "com.valvesoftware.steamlink" to "Steam Link",
+            "com.valvesoftware.android.steam.community" to "Steam",
+            "com.moonlight_stream.moonlight" to "Moonlight Game Streaming",
+            "com.lizardbyte.sunshine" to "Sunshine Game Stream",
+            "org.retroarch" to "RetroArch",
+            "org.retroarch.aarch64" to "RetroArch Plus",
+            "org.ppsspp.ppsspp" to "PPSSPP",
+            "org.ppsspp.ppssppgold" to "PPSSPP Gold",
+            "org.dolphinemu.dolphinemu" to "Dolphin Emulator",
+            "xyz.aethersx2.android" to "AetherSX2",
+            "com.github.stenzek.duckstation" to "DuckStation",
+            "org.citra.citra_emu" to "Citra Emulator",
+            "org.yuzu.yuzu_emu" to "Yuzu Emulator",
+            "com.nvidia.geforcenow" to "GeForce NOW",
+            "com.gamepass" to "Xbox Game Pass",
+            "com.microsoft.xboxone.smartglass" to "Xbox",
+            "com.scee.psxandroid" to "PlayStation App",
+            "com.epicgames.portal" to "Epic Games Store",
+            "com.roblox.client" to "Roblox",
+            "com.mojang.minecraftpe" to "Minecraft",
+            "com.dts.freefireth" to "Free Fire",
+            "com.dts.freefiremax" to "Free Fire MAX",
+            "com.tencent.ig" to "PUBG Mobile",
+            "com.pubg.imobile" to "BGMI",
+            "com.miHoYo.GenshinImpact" to "Genshin Impact",
+            "com.activision.callofduty.shooter" to "Call of Duty: Mobile",
+
+            // Security, Privacy, Password & Cloud
+            "com.x8bit.bitwarden" to "Bitwarden",
+            "com.agilebits.onepassword" to "1Password",
+            "keepass2android.keepass2android" to "KeePass2Android",
+            "ch.protonmail.android" to "Proton Mail",
+            "ch.protonvpn.android" to "Proton VPN",
+            "com.nordvpn.android" to "NordVPN",
+            "com.expressvpn.vpn" to "ExpressVPN",
+            "net.mullvad.mullvadvpn" to "Mullvad VPN",
+            "com.surfshark.vpnclient.android" to "Surfshark VPN",
+            "com.wireguard.android" to "WireGuard",
+            "com.adguard.android" to "AdGuard",
+            "com.adguard.android.contentblocker" to "AdGuard Content Blocker",
+            "io.nextdns.NextDNS" to "NextDNS",
+            "com.dropbox.android" to "Dropbox",
+            "mega.privacy.android.app" to "MEGA",
+
+            // Productivity, Notes & Tasks
+            "notion.id" to "Notion",
+            "md.obsidian" to "Obsidian",
+            "com.todoist" to "Todoist",
+            "com.ticktick.task" to "TickTick",
+            "com.anydo" to "Any.do",
+            "com.ichi2.anki" to "AnkiDroid",
+            "com.adobe.reader" to "Adobe Acrobat Reader",
+            "com.duolingo" to "Duolingo",
+            "com.strava" to "Strava",
+            "com.fitbit.FitbitMobile" to "Fitbit",
+            "com.niksoftware.snapseed" to "Snapseed",
+            "com.waze" to "Waze",
+            "com.ubercab" to "Uber",
+            "com.airbnb.android" to "Airbnb",
+            "com.ebay.mobile" to "eBay",
+            "com.alibaba.aliexpresshd" to "AliExpress",
+            "com.paypal.android.p2pmobile" to "PayPal",
+            "com.revolut.revolut" to "Revolut",
+            "com.transferwise.android" to "Wise",
+            "com.squareup.cash" to "Cash App",
+            "com.venmo" to "Venmo"
         )
     }
 
@@ -670,6 +850,26 @@ class UadRepository(private val context: Context) {
         return formatFriendlyPackageName(pkgName)
     }
 
+    private val ACRONYMS = mapOf(
+        "vlc" to "VLC", "mx" to "MX", "tv" to "TV", "ui" to "UI", "fx" to "FX", "cx" to "CX",
+        "vpn" to "VPN", "dns" to "DNS", "ftp" to "FTP", "smb" to "SMB", "ssh" to "SSH",
+        "ai" to "AI", "hd" to "HD", "qr" to "QR", "vr" to "VR", "ar" to "AR", "gps" to "GPS",
+        "nfc" to "NFC", "sms" to "SMS", "mms" to "MMS", "voip" to "VoIP", "api" to "API",
+        "sdk" to "SDK", "adb" to "ADB", "rar" to "RAR", "zip" to "ZIP", "pdf" to "PDF",
+        "apk" to "APK", "mp3" to "MP3", "mp4" to "MP4", "mkv" to "MKV", "flac" to "FLAC",
+        "oem" to "OEM", "aosp" to "AOSP", "ota" to "OTA", "fm" to "FM", "am" to "AM",
+        "pc" to "PC", "lan" to "LAN", "wan" to "WAN", "bbk" to "BBK", "wifi" to "Wi-Fi"
+    )
+
+    private val COMPOUND_SUFFIXES = listOf(
+        "explorer", "player", "manager", "recorder", "browser", "viewer", "launcher",
+        "scanner", "cleaner", "booster", "keyboard", "battery", "gallery", "camera",
+        "weather", "clock", "calculator", "calendar", "contacts", "dialer", "messages",
+        "photos", "videos", "music", "audio", "stream", "remote", "media", "editor",
+        "reader", "maker", "tracker", "connect", "master", "speedtest", "gamepass",
+        "link", "guard", "warden", "casts", "pod", "arch", "station"
+    )
+
     private fun formatFriendlyPackageName(pkgName: String): String {
         val parts = pkgName.split('.').filter { it.isNotBlank() }
         if (parts.isEmpty()) return pkgName
@@ -680,7 +880,7 @@ class UadRepository(private val context: Context) {
             pkgName.startsWith("com.miui.") || pkgName.startsWith("com.xiaomi.") -> "Xiaomi"
             pkgName.startsWith("com.google.android.") || pkgName.startsWith("com.google.") -> "Google"
             pkgName.startsWith("com.oneplus.") -> "OnePlus"
-            pkgName.startsWith("com.oppo.") || pkgName.startsWith("com.coloros.") -> "OPPO"
+            pkgName.startsWith("com.oppo.") || pkgName.startsWith("com.coloros.") || pkgName.startsWith("com.oplus.") -> "OPPO"
             pkgName.startsWith("com.vivo.") || pkgName.startsWith("com.bbk.") || pkgName.startsWith("com.iqoo.") -> "Vivo"
             pkgName.startsWith("com.sony.") || pkgName.startsWith("com.sonymobile.") -> "Sony"
             pkgName.startsWith("com.motorola.") || pkgName.startsWith("com.moto.") -> "Motorola"
@@ -688,28 +888,62 @@ class UadRepository(private val context: Context) {
             pkgName.startsWith("com.amazon.") -> "Amazon"
             pkgName.startsWith("com.huawei.") || pkgName.startsWith("com.hihonor.") -> "Huawei"
             pkgName.startsWith("com.transsion.") -> "Transsion"
+            pkgName.startsWith("com.microsoft.") -> "Microsoft"
             else -> null
         }
 
-        val ignored = setOf("com", "org", "net", "android", "apps", "app", "vendor", "service", "services", "system", "sec", "miui", "xiaomi", "samsung", "google", "oppo", "vivo", "oneplus", "sony", "motorola", "tcl", "amazon")
+        val ignored = setOf("com", "org", "net", "io", "ai", "android", "apps", "app", "vendor", "system", "sec", "miui", "xiaomi", "samsung", "google", "oppo", "vivo", "oneplus", "sony", "motorola", "tcl", "amazon", "microsoft")
         val meaningful = parts.filter { it.lowercase() !in ignored }
 
-        // Handle cases like youtube.tv or livingroom or tachyon
+        // Suffixes that are generic distribution variants or internal codenames
+        val genericSuffixes = setOf(
+            "ad", "ads", "pro", "plus", "premium", "lite", "free", "trial", "beta", "alpha",
+            "nightly", "dev", "canary", "preview", "release", "full", "mobile", "arm", "x86",
+            "global", "intl", "row", "livingroom", "thirdpartyclient", "flutter", "mediaclient",
+            "frontpage", "katana", "orca", "pop"
+        )
+
         val target = when {
             meaningful.isEmpty() -> parts.last()
-            meaningful.size >= 2 && (meaningful.last().lowercase() in setOf("tv", "ui", "service", "helper", "agent", "core", "client")) -> {
+            meaningful.size >= 2 && meaningful.last().lowercase() in genericSuffixes -> {
+                val core = meaningful[meaningful.size - 2]
+                val suffix = meaningful.last().lowercase()
+                if (suffix in setOf("pro", "plus", "premium", "lite", "beta", "alpha")) {
+                    "$core $suffix"
+                } else {
+                    core
+                }
+            }
+            meaningful.size >= 2 && (meaningful.last().lowercase() in setOf("tv", "ui", "service", "helper", "agent", "core", "client", "music", "browser", "video", "photos", "mail", "shopping")) -> {
                 "${meaningful[meaningful.size - 2]} ${meaningful.last()}"
             }
             else -> meaningful.last()
         }
 
-        // Title-case camelCase and underscores
-        val words = target.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+        // Title-case camelCase, underscores, and dashes
+        val separated = target.replace(Regex("([a-z])([A-Z])"), "$1 $2")
             .replace('_', ' ')
             .replace('-', ' ')
-            .split(' ')
-            .filter { it.isNotBlank() }
-            .map { it.replaceFirstChar { c -> c.uppercase() } }
+
+        // Compound lowercase word splitting
+        val tokens = separated.split(' ').filter { it.isNotBlank() }
+        val splitTokens = tokens.flatMap { token ->
+            val lower = token.lowercase()
+            val matchedSuffix = COMPOUND_SUFFIXES.firstOrNull { suffix ->
+                lower.endsWith(suffix) && lower.length >= suffix.length + 3
+            }
+            if (matchedSuffix != null) {
+                val prefix = token.substring(0, token.length - matchedSuffix.length)
+                listOf(prefix, matchedSuffix)
+            } else {
+                listOf(token)
+            }
+        }
+
+        val words = splitTokens.map { token ->
+            val lower = token.lowercase()
+            ACRONYMS[lower] ?: token.replaceFirstChar { c -> c.uppercase() }
+        }
 
         val formattedTarget = words.joinToString(" ")
         return if (brandPrefix != null && !formattedTarget.startsWith(brandPrefix, ignoreCase = true)) {

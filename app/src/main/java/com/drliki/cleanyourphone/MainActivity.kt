@@ -137,10 +137,28 @@ fun CleanYourPhoneAppRoot(
                     )
                     else -> Pair(allHistory, "All Activities Log")
                 }
+                val isWirelessMode = previousScreen == AppScreen.WIRELESS
+                val isConnected = if (isWirelessMode) {
+                    wirelessVm.isConnected.value && (targetDeviceFilter == null || targetDeviceFilter == wirelessVm.connectedName.value)
+                } else if (previousScreen == AppScreen.SHIZUKU) {
+                    shizukuVm.isShizukuAvailable.value
+                } else {
+                    true
+                }
                 ActionLogScreen(
                     actionLog = logToDisplay,
                     sourceTitle = logTitle,
                     initialDeviceFilter = targetDeviceFilter,
+                    isDeviceConnected = isConnected,
+                    checkDeviceConnected = { dev ->
+                        if (isWirelessMode) {
+                            wirelessVm.isConnected.value && (dev == null || dev == wirelessVm.connectedName.value)
+                        } else if (previousScreen == AppScreen.SHIZUKU) {
+                            shizukuVm.isShizukuAvailable.value
+                        } else {
+                            true
+                        }
+                    },
                     onUndoAction = { entry ->
                         if (entry.mode == "SHIZUKU" || entry.deviceName.contains("Local", ignoreCase = true)) {
                             shizukuVm.undoAction(entry)

@@ -74,7 +74,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v3.1.0 · dr-liki",
+                        "v3.2.0 · dr-liki",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -89,27 +89,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                // Open Source Credits
-                Text(
-                    "Open Source Credits & Dependencies",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "• Universal-Debloater-Alliance (UAD-ng) — Debloat catalog\n" +
-                    "• CleanYourTV by gathin23 — Android & Google TV database\n" +
-                    "• Shizuku by Rikka — On-device ADB privileged binder API\n" +
-                    "• DADb by mobile.dev — Lightweight Kotlin ADB client\n" +
-                    "• BouncyCastle — SPAKE2 & TLS cryptographic primitives\n" +
-                    "• ZXing — Wireless pairing camera QR scanner",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(24.dp))

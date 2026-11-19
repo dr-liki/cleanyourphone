@@ -55,6 +55,7 @@ fun ShizukuScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
+    var logFilter by remember { mutableStateOf(LogFilterType.ALL) }
 
     val activeUndoCount = actionLog.count { !it.isUndone }
 
@@ -263,6 +264,8 @@ fun ShizukuScreen(
                     ActionLogContent(
                         actionLog = actionLog,
                         searchQuery = searchQuery,
+                        selectedFilter = logFilter,
+                        onFilterChange = { logFilter = it },
                         onUndoAction = { viewModel.undoAction(it) },
                         onUndoMultipleActions = { list ->
                             list.forEach { viewModel.undoAction(it) }

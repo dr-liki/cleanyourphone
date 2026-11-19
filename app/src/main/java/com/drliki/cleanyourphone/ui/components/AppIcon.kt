@@ -80,6 +80,29 @@ fun resolveAppGlyph(pkgName: String, label: String): AppGlyph? {
     val pkg = pkgName.lowercase()
 
     return when {
+        // Specific Media Players (VLC, MX Player, Kodi, Plex, Stremio, SmartTube)
+        pkg.contains("vlc") || pkg.contains("videolan") ->
+            AppGlyph(Icons.Default.PlayArrow, Color(0xFFFF5500)) // VLC Cone Orange
+
+        pkg.contains("mxtech") || (pkg.contains("videoplayer") && !pkg.contains("miui")) ->
+            AppGlyph(Icons.Default.PlayArrow, Color(0xFF0072CE)) // MX Player Blue
+
+        pkg.contains("kodi") || pkg.contains("xbmc") ->
+            AppGlyph(Icons.Default.Tv, Color(0xFF17B2E7)) // Kodi Cyan
+
+        pkg.contains("plex") ->
+            AppGlyph(Icons.Default.PlayArrow, Color(0xFFE5A00D)) // Plex Amber
+
+        pkg.contains("stremio") ->
+            AppGlyph(Icons.Default.PlayArrow, Color(0xFF7045AA)) // Stremio Purple
+
+        pkg.contains("jellyfin") || pkg.contains("emby") ->
+            AppGlyph(Icons.Default.SmartDisplay, Color(0xFF9A52FF))
+
+        pkg.contains("smarttube") || pkg.contains("teamsmart") || pkg.contains("newpipe") ||
+        pkg.contains("revanced") || pkg.contains("grayjay") || pkg.contains("liskovsoft") ->
+            AppGlyph(Icons.Default.PlayArrow, Color(0xFFCC0000))
+
         // YouTube / TV Video
         pkg.contains("youtube.tv") || pkg.contains("youtube") ->
             if (pkg.contains("music")) AppGlyph(Icons.Default.MusicNote, Color(0xFFCC0000))
@@ -90,6 +113,13 @@ fun resolveAppGlyph(pkgName: String, label: String): AppGlyph? {
 
         // Spotify
         pkg.contains("spotify") -> AppGlyph(Icons.Default.MusicNote, Color(0xFF1DB954))
+
+        // Specific Music Players & Streaming
+        pkg.contains("poweramp") || pkg.contains("musicolet") || pkg.contains("vimusic") ||
+        pkg.contains("innertune") || pkg.contains("tidal") || pkg.contains("deezer") ||
+        pkg.contains("soundcloud") || pkg.contains("retromusic") || pkg.contains("pocketcasts") ||
+        pkg.contains("antennapod") ->
+            AppGlyph(Icons.Default.MusicNote, Color(0xFFE91E63))
 
         // Prime Video / Amazon
         pkg.contains("amazonvideo") || (pkg.contains("amazon") && pkg.contains("video")) ->
@@ -103,46 +133,70 @@ fun resolveAppGlyph(pkgName: String, label: String): AppGlyph? {
         pkg.contains("disney") || pkg.contains("hulu") || pkg.contains("hbo") || pkg.contains("peacock") || pkg.contains("paramount") || pkg.contains("crunchyroll") ->
             AppGlyph(Icons.Default.Tv, Color(0xFF113CCF))
 
-        // Chrome & Browsers
-        pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("sbrowser") ->
+        // Browsers (Firefox, Brave, Opera, Edge, Tor, DuckDuckGo, Chrome)
+        pkg.contains("firefox") || pkg.contains("fenix") ->
+            AppGlyph(Icons.Default.Language, Color(0xFFFF7139)) // Firefox Orange/Red
+        pkg.contains("brave") ->
+            AppGlyph(Icons.Default.Shield, Color(0xFFFB542B)) // Brave Lion Orange
+        pkg.contains("opera") ->
+            AppGlyph(Icons.Default.Language, Color(0xFFFF1B2D)) // Opera Red
+        pkg.contains("emmx") || pkg.contains("edge") ->
+            AppGlyph(Icons.Default.Language, Color(0xFF0078D7)) // Edge Blue
+        pkg.contains("torproject") || pkg.contains("torbrowser") ->
+            AppGlyph(Icons.Default.Shield, Color(0xFF7D4698)) // Tor Purple
+        pkg.contains("duckduckgo") ->
+            AppGlyph(Icons.Default.Search, Color(0xFFDE5833)) // DuckDuckGo Orange
+        pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("sbrowser") || pkg.contains("vivaldi") || pkg.contains("kiwibrowser") ->
             AppGlyph(Icons.Default.Language, Color(0xFF1A73E8))
 
-        // Play Store / App Stores
-        pkg.contains("vending") || pkg.contains("samsungapps") || pkg.contains("appmarket") || pkg.contains("mipicks") || pkg.contains("appstore") ->
+        // Play Store / App Stores / Package Repos
+        pkg.contains("vending") || pkg.contains("samsungapps") || pkg.contains("appmarket") ||
+        pkg.contains("mipicks") || pkg.contains("appstore") || pkg.contains("fdroid") || pkg.contains("aurora") ->
             AppGlyph(Icons.Default.ShoppingBag, Color(0xFF01875F))
 
+        // Dev, Terminal & Privileged Tools
+        pkg.contains("termux") || pkg.contains("shizuku") || pkg.contains("magisk") ||
+        pkg.contains("kernelsu") || pkg.contains("appmanager") || pkg.contains("sdm") ->
+            AppGlyph(Icons.Default.Code, Color(0xFF263238))
+
         // Gmail & Email
-        pkg.contains(".gm") || pkg.contains("email") || pkg.contains("mail") || pkg.contains("outlook") ->
+        pkg.contains(".gm") || pkg.contains("email") || pkg.contains("mail") || pkg.contains("outlook") || pkg.contains("protonmail") ->
             AppGlyph(Icons.Default.Email, Color(0xFFEA4335))
 
         // Maps & Navigation
-        pkg.contains("maps") || pkg.contains("navigation") || pkg.contains("location") ->
+        pkg.contains("maps") || pkg.contains("navigation") || pkg.contains("location") || pkg.contains("waze") ->
             AppGlyph(Icons.Default.LocationOn, Color(0xFF34A853))
 
         // Photos & Gallery
-        pkg.contains("photos") || pkg.contains("gallery") ->
+        pkg.contains("photos") || pkg.contains("gallery") || pkg.contains("snapseed") ->
             AppGlyph(Icons.Default.PhotoLibrary, Color(0xFF9333EA))
 
         // Camera
         pkg.contains("camera") -> AppGlyph(Icons.Default.CameraAlt, Color(0xFF0D9488))
 
         // TV Launchers / Android TV Home
-        pkg.contains("tvlauncher") || pkg.contains("tv.launcher") || pkg.contains("launcherx") ->
+        pkg.contains("tvlauncher") || pkg.contains("tv.launcher") || pkg.contains("launcherx") ||
+        pkg.contains("flauncher") || pkg.contains("atvlauncher") || pkg.contains("projengmenu") ->
             AppGlyph(Icons.Default.Tv, Color(0xFF2E7D32))
 
         // Phone & Dialer
-        pkg.contains("dialer") || pkg.contains("telephony") || pkg.contains(".phone") ->
+        pkg.contains("dialer") || pkg.contains("telephony") || pkg.contains(".phone") || pkg.contains("truecaller") ->
             AppGlyph(Icons.Default.Phone, Color(0xFF43A047))
 
         // Messages & Chat
         pkg.contains("whatsapp") -> AppGlyph(Icons.Default.Chat, Color(0xFF25D366))
-        pkg.contains("telegram") -> AppGlyph(Icons.Default.Send, Color(0xFF2AABEE))
+        pkg.contains("telegram") || pkg.contains("challegram") -> AppGlyph(Icons.Default.Send, Color(0xFF2AABEE))
+        pkg.contains("securesms") || pkg.contains("signal") -> AppGlyph(Icons.Default.Chat, Color(0xFF3A76F0))
+        pkg.contains("discord") -> AppGlyph(Icons.Default.Chat, Color(0xFF5865F2))
+        pkg.contains("reddit") -> AppGlyph(Icons.Default.Chat, Color(0xFFFF4500))
+        pkg.contains("slack") -> AppGlyph(Icons.Default.Chat, Color(0xFF4A154B))
         pkg.contains("messaging") || pkg.contains(".mms") || pkg.contains("chat") ->
             AppGlyph(Icons.Default.Chat, Color(0xFF1E88E5))
         pkg.contains("facebook") || pkg.contains("messenger") || pkg.contains(".orca") ->
             AppGlyph(Icons.Default.Message, Color(0xFF1877F2))
-        pkg.contains("instagram") -> AppGlyph(Icons.Default.PhotoCamera, Color(0xFFE1306C))
+        pkg.contains("instagram") || pkg.contains("barcelona") -> AppGlyph(Icons.Default.PhotoCamera, Color(0xFFE1306C))
         pkg.contains("twitter") -> AppGlyph(Icons.Default.Tag, Color(0xFF111827))
+        pkg.contains("tiktok") || pkg.contains("musically") -> AppGlyph(Icons.Default.MusicNote, Color(0xFF010101))
 
         // Clock & Alarm
         pkg.contains("clock") -> AppGlyph(Icons.Default.Schedule, Color(0xFF3949AB))
@@ -156,52 +210,69 @@ fun resolveAppGlyph(pkgName: String, label: String): AppGlyph? {
         // Weather
         pkg.contains("weather") -> AppGlyph(Icons.Default.WbSunny, Color(0xFFFFA000))
 
-        // Files & Storage
-        pkg.contains("myfiles") || pkg.contains("filemanager") || pkg.contains("files") || pkg.contains("documentsui") ->
-            AppGlyph(Icons.Default.Folder, Color(0xFFFF6F00))
+        // Files, Archives & Storage (X-plore, Total Commander, Solid Explorer, MiXplorer, Root Explorer, ZArchiver, RAR)
+        pkg.contains("xplore") || pkg.contains("totalcommander") || pkg.contains("solidexplorer") ||
+        pkg.contains("mixplorer") || pkg.contains("rootexplorer") || pkg.contains("zarchiver") ||
+        pkg.contains("rarlab") || pkg.contains("myfiles") || pkg.contains("filemanager") ||
+        pkg.contains("files") || pkg.contains("documentsui") || pkg.contains("cxinventor") ||
+        pkg.contains("nextapp.fx") || pkg.contains("estrongs") ->
+            AppGlyph(Icons.Default.Folder, Color(0xFFFF8F00))
 
         // Music & Audio
         pkg.contains("music") || pkg.contains("audio") || pkg.contains(".player") || pkg.contains("sound") ->
             AppGlyph(Icons.Default.MusicNote, Color(0xFFD81B60))
 
         // Video & Media Players
-        pkg.contains("video") || pkg.contains("movie") || pkg.contains("videoplayer") || pkg.contains("plex") || pkg.contains("kodi") || pkg.contains("vlc") ->
+        pkg.contains("video") || pkg.contains("movie") || pkg.contains("videoplayer") ->
             AppGlyph(Icons.Default.SmartDisplay, Color(0xFF8E24AA))
 
-        // Games
-        pkg.contains("game") || pkg.contains("gaming") || pkg.contains("gamespace") ->
-            AppGlyph(Icons.Default.SportsEsports, Color(0xFF6A1B9A))
+        // Games, Emulation & Remote Play (Steam, Moonlight, Sunshine, RetroArch, PPSSPP, Dolphin, DuckStation)
+        pkg.contains("steamlink") || pkg.contains("moonlight") || pkg.contains("sunshine") ||
+        pkg.contains("retroarch") || pkg.contains("ppsspp") || pkg.contains("dolphin") ||
+        pkg.contains("duckstation") || pkg.contains("aethersx2") || pkg.contains("citra") ||
+        pkg.contains("yuzu") || pkg.contains("game") || pkg.contains("gaming") || pkg.contains("gamespace") ->
+            AppGlyph(Icons.Default.SportsEsports, Color(0xFF5E35B1))
 
-        // Notes & Docs
-        pkg.contains("notes") || pkg.contains("keep") || pkg.contains("memo") ->
+        // Notes, Tasks & Docs
+        pkg.contains("notes") || pkg.contains("keep") || pkg.contains("memo") ||
+        pkg.contains("notion") || pkg.contains("obsidian") || pkg.contains("todoist") || pkg.contains("ticktick") ->
             AppGlyph(Icons.Default.EditNote, Color(0xFFF9A825))
 
         // Settings & System
         pkg.contains("settings") || pkg.contains("setup") || pkg.contains("config") ->
             AppGlyph(Icons.Default.Settings, Color(0xFF546E7A))
 
-        // Security, Knox, Antivirus
-        pkg.contains("security") || pkg.contains("knox") || pkg.contains("protect") || pkg.contains("cleanmaster") ->
-            AppGlyph(Icons.Default.Shield, Color(0xFF37474F))
+        // Security, Passwords & VPNs (Bitwarden, 1Password, WireGuard, NordVPN, ExpressVPN, Mullvad, AdGuard, NextDNS)
+        pkg.contains("bitwarden") || pkg.contains("onepassword") || pkg.contains("keepass") ||
+        pkg.contains("wireguard") || pkg.contains("nordvpn") || pkg.contains("expressvpn") ||
+        pkg.contains("mullvad") || pkg.contains("adguard") || pkg.contains("nextdns") ||
+        pkg.contains("surfshark") || pkg.contains("vpn") || pkg.contains("security") ||
+        pkg.contains("knox") || pkg.contains("protect") || pkg.contains("cleanmaster") ->
+            AppGlyph(Icons.Default.Shield, Color(0xFF1565C0))
 
         // Voice Assistant & Bixby
         pkg.contains("bixby") || pkg.contains("assistant") || pkg.contains("voiceassist") ->
             AppGlyph(Icons.Default.Mic, Color(0xFF6200EE))
 
         // Wallet & Payments
-        pkg.contains("wallet") || pkg.contains("spay") || pkg.contains("pay") || pkg.contains("billing") ->
+        pkg.contains("wallet") || pkg.contains("spay") || pkg.contains("pay") ||
+        pkg.contains("billing") || pkg.contains("paypal") || pkg.contains("revolut") ||
+        pkg.contains("cash") || pkg.contains("venmo") ->
             AppGlyph(Icons.Default.Payment, Color(0xFF0D47A1))
 
-        // Cloud & Sync
-        pkg.contains("cloud") || pkg.contains("sync") || pkg.contains("backup") ->
+        // Cloud & Sync (Dropbox, MEGA, OneDrive, Google Drive)
+        pkg.contains("dropbox") || pkg.contains("mega") || pkg.contains("skydrive") ||
+        pkg.contains("onedrive") || pkg.contains("cloud") || pkg.contains("sync") || pkg.contains("backup") ->
             AppGlyph(Icons.Default.Cloud, Color(0xFF0288D1))
 
         // Remote & Cast & Connectivity
-        pkg.contains("remote") || pkg.contains("cast") || pkg.contains("bluetooth") || pkg.contains("wifi") || pkg.contains("share") ->
+        pkg.contains("remote") || pkg.contains("cast") || pkg.contains("bluetooth") ||
+        pkg.contains("wifi") || pkg.contains("share") || pkg.contains("sendfilestotv") ->
             AppGlyph(Icons.Default.Cast, Color(0xFF455A64))
 
         // Health & Fitness
-        pkg.contains("health") || pkg.contains("fitness") || pkg.contains("wellbeing") ->
+        pkg.contains("health") || pkg.contains("fitness") || pkg.contains("wellbeing") ||
+        pkg.contains("strava") || pkg.contains("fitbit") ->
             AppGlyph(Icons.Default.Favorite, Color(0xFFE91E63))
 
         // Keyboard & Input

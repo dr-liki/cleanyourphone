@@ -34,6 +34,8 @@ fun ActionLogScreen(
     actionLog: List<ActionLogEntry>,
     sourceTitle: String = "Action Log",
     initialDeviceFilter: String? = null,
+    isDeviceConnected: Boolean = true,
+    checkDeviceConnected: ((String?) -> Boolean)? = null,
     onUndoAction: (ActionLogEntry) -> Unit,
     onUndoMultipleActions: (List<ActionLogEntry>) -> Unit = { list -> list.forEach(onUndoAction) },
     onNavigateBack: () -> Unit
@@ -59,6 +61,7 @@ fun ActionLogScreen(
     }
     val activeCount = currentScoped.count { !it.isUndone }
     val restoredCount = currentScoped.count { it.isUndone }
+    val effectiveConnected = checkDeviceConnected?.invoke(selectedDevice) ?: isDeviceConnected
 
     Scaffold(
         topBar = {
@@ -101,7 +104,7 @@ fun ActionLogScreen(
                         IconButton(onClick = { isSearchActive = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                        if (activeCount > 0) {
+                        if (effectiveConnected && activeCount > 0) {
                             TextButton(onClick = { showRestoreAllDialog = true }) {
                                 Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
@@ -214,8 +217,10 @@ fun ActionLogContent(
     val activeCount = searchScopedEntries.count { !it.isUndone }
     val restoredCount = searchScopedEntries.count { it.isUndone }
 
-    val filteredLog = remember(searchScopedEntries, selectedFilter) {
-        when (selectedFilter) {
+    var activeFilter by remember(selectedFilter) { mutableStateOf(selectedFilter) }
+
+    val filteredLog = remember(searchScopedEntries, activeFilter) {
+        when (activeFilter) {
             LogFilterType.ALL -> searchScopedEntries
             LogFilterType.RESTORED -> searchScopedEntries.filter { it.isUndone }
         }
@@ -280,8 +285,11 @@ fun ActionLogContent(
                             LogFilterType.RESTORED -> restoredCount
                         }
                         FilterChip(
-                            selected = selectedFilter == filter,
-                            onClick = { onFilterChange(filter) },
+                            selected = activeFilter == filter,
+                            onClick = {
+                                activeFilter = filter
+                                onFilterChange(filter)
+                            },
                             label = { Text("${filter.label} ($count)") }
                         )
                     }

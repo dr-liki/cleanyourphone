@@ -172,7 +172,7 @@ class AppSettings(context: Context) {
     // ── Comprehensive Backup & Restore ───────────────────────────────────────
     fun createBackup(): AppBackupData {
         return AppBackupData(
-            version = "2.8.0",
+            version = "3.2.0",
             timestamp = System.currentTimeMillis(),
             exportedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()),
             savedProfiles = getSavedProfiles(),

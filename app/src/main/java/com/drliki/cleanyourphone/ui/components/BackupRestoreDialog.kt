@@ -1,6 +1,11 @@
 package com.drliki.cleanyourphone.ui.components
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,6 +28,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.drliki.cleanyourphone.data.AppSettings
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private fun getFileNameFromUri(context: Context, uri: Uri): String {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        runCatching {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) {
+                        result = cursor.getString(index)
+                    }
+                }
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result ?: "backup.json"
+}
 
 @Composable
 fun BackupRestoreDialog(
@@ -37,12 +69,60 @@ fun BackupRestoreDialog(
     // Export state
     val backupData = remember { settings.createBackup() }
     val backupJson = remember { settings.exportBackupJson() }
+    var exportSuccessMsg by remember { mutableStateOf<String?>(null) }
+    var exportErrorMsg by remember { mutableStateOf<String?>(null) }
     var copiedToClipboard by remember { mutableStateOf(false) }
 
     // Import state
+    var selectedRestoreFileName by remember { mutableStateOf<String?>(null) }
     var importJsonText by remember { mutableStateOf("") }
     var restoreSuccessMsg by remember { mutableStateOf<String?>(null) }
     var restoreErrorMsg by remember { mutableStateOf<String?>(null) }
+    var showManualPaste by remember { mutableStateOf(false) }
+
+    // File-based Export: SAF CreateDocument launcher (.json)
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(backupJson.toByteArray(Charsets.UTF_8))
+                } ?: throw IllegalStateException("Cannot open output stream for selected file")
+            }.onSuccess {
+                val fileName = getFileNameFromUri(context, uri)
+                exportSuccessMsg = "Backup saved to: $fileName"
+                exportErrorMsg = null
+            }.onFailure { err ->
+                exportErrorMsg = "Failed to save file: ${err.message}"
+                exportSuccessMsg = null
+            }
+        }
+    }
+
+    // File-based Import: SAF OpenDocument launcher
+    val openDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val fileName = getFileNameFromUri(context, uri)
+            selectedRestoreFileName = fileName
+            runCatching {
+                val content = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader().readText()
+                } ?: throw IllegalStateException("Cannot read selected file")
+                val res = settings.restoreBackupFromJson(content)
+                res.getOrThrow()
+            }.onSuccess { msg ->
+                restoreSuccessMsg = "$msg (from $fileName)"
+                restoreErrorMsg = null
+                onBackupRestored()
+            }.onFailure { err ->
+                restoreErrorMsg = "Failed to restore $fileName: ${err.message}"
+                restoreSuccessMsg = null
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -100,23 +180,23 @@ fun BackupRestoreDialog(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Export Backup") },
+                        text = { Text("Export File") },
                         icon = { Icon(Icons.Default.CloudUpload, contentDescription = null, Modifier.size(18.dp)) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Import Restore") },
+                        text = { Text("Import File") },
                         icon = { Icon(Icons.Default.CloudDownload, contentDescription = null, Modifier.size(18.dp)) }
                     )
                 }
 
                 when (selectedTab) {
                     0 -> {
-                        // ── Tab 0: Export Backup ──────────────────────────────
+                        // ── Tab 0: Export Backup File ──────────────────────────────
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
-                                "Create a complete snapshot of your debloat states, custom debloat URLs, remembered device profiles, and action log history.",
+                                "Create a complete snapshot file of your remembered devices, disabled package states, catalog URLs, and action log history.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -161,89 +241,153 @@ fun BackupRestoreDialog(
                                 }
                             }
 
-                            // Copy to Clipboard Button
-                            OutlinedButton(
+                            // Success Message Box
+                            AnimatedVisibility(visible = exportSuccessMsg != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = TierRecommended.copy(alpha = 0.15f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.CheckCircle, null, tint = TierRecommended, modifier = Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            exportSuccessMsg ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TierRecommended,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Error Message Box
+                            AnimatedVisibility(visible = exportErrorMsg != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            exportErrorMsg ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Primary: Save Backup File (.json) via SAF
+                            Button(
                                 onClick = {
-                                    clipboardManager.setText(AnnotatedString(backupJson))
-                                    copiedToClipboard = true
+                                    val timeTag = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+                                    val defaultName = "CleanYourPhone-Backup-$timeTag.json"
+                                    createDocumentLauncher.launch(defaultName)
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(
-                                    if (copiedToClipboard) Icons.Default.Check else Icons.Default.ContentCopy,
-                                    contentDescription = null,
-                                    tint = if (copiedToClipboard) TierRecommended else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Icon(Icons.Default.Save, contentDescription = null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text(
-                                    if (copiedToClipboard) "Copied JSON to Clipboard!" else "Copy JSON to Clipboard",
-                                    color = if (copiedToClipboard) TierRecommended else MaterialTheme.colorScheme.primary
-                                )
+                                Text("Save Backup File (.json)")
                             }
 
-                            // Share / Export File Button
-                            Button(
+                            // Secondary: Share File Intent
+                            OutlinedButton(
                                 onClick = {
+                                    val timeTag = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
                                     val sendIntent = Intent().apply {
                                         action = Intent.ACTION_SEND
                                         putExtra(Intent.EXTRA_TEXT, backupJson)
-                                        putExtra(Intent.EXTRA_SUBJECT, "CleanYourPhone-Backup-${System.currentTimeMillis()}.json")
+                                        putExtra(Intent.EXTRA_SUBJECT, "CleanYourPhone-Backup-$timeTag.json")
                                         type = "application/json"
                                     }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Export CleanYourPhone Backup"))
+                                    context.startActivity(Intent.createChooser(sendIntent, "Share Backup"))
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Share or Save Backup File")
+                                Text("Share Backup via Apps")
+                            }
+
+                            // Copy JSON to Clipboard as minor option
+                            TextButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(backupJson))
+                                    copiedToClipboard = true
+                                },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) {
+                                Icon(
+                                    if (copiedToClipboard) Icons.Default.Check else Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    tint = if (copiedToClipboard) TierRecommended else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    if (copiedToClipboard) "Copied JSON to Clipboard!" else "Copy JSON to Clipboard",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (copiedToClipboard) TierRecommended else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
 
                     1 -> {
-                        // ── Tab 1: Import / Restore ───────────────────────────
+                        // ── Tab 1: Import / Restore File ───────────────────────────
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
-                                "Paste a previously exported CleanYourPhone JSON snapshot below to restore saved device profiles, action history, and configuration.",
+                                "Pick a previously saved CleanYourPhone backup file (.json) from your storage, downloads, or cloud drive to restore.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            OutlinedTextField(
-                                value = importJsonText,
-                                onValueChange = {
-                                    importJsonText = it
-                                    restoreErrorMsg = null
-                                    restoreSuccessMsg = null
-                                },
-                                label = { Text("Backup JSON Content") },
-                                placeholder = { Text("Paste {\"version\": \"2.8.0\", ...} here") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(130.dp),
-                                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            // Quick paste button
-                            TextButton(
+                            // Primary: Select File via SAF
+                            Button(
                                 onClick = {
-                                    val text = clipboardManager.getText()?.text ?: ""
-                                    if (text.isNotBlank()) {
-                                        importJsonText = text
-                                        restoreErrorMsg = null
-                                        restoreSuccessMsg = null
-                                    }
+                                    openDocumentLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
                                 },
-                                modifier = Modifier.align(Alignment.End)
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(Icons.Default.ContentPaste, contentDescription = null, Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Paste from Clipboard", style = MaterialTheme.typography.labelSmall)
+                                Icon(Icons.Default.FolderOpen, contentDescription = null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Select Backup File (.json)")
+                            }
+
+                            // Selected file badge if loaded
+                            selectedRestoreFileName?.let { fname ->
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Description, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            fname,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
                             }
 
                             // Success Message Box
@@ -291,30 +435,86 @@ fun BackupRestoreDialog(
                                 }
                             }
 
-                            // Apply Restore Button
-                            Button(
-                                onClick = {
-                                    if (importJsonText.isBlank()) {
-                                        restoreErrorMsg = "Please enter or paste JSON backup data first."
-                                        return@Button
-                                    }
-                                    val result = settings.restoreBackupFromJson(importJsonText)
-                                    result.onSuccess { msg ->
-                                        restoreSuccessMsg = msg
-                                        restoreErrorMsg = null
-                                        onBackupRestored()
-                                    }.onFailure { err ->
-                                        restoreErrorMsg = "Invalid backup format: ${err.message}"
-                                        restoreSuccessMsg = null
-                                    }
-                                },
-                                enabled = importJsonText.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                            // Optional Manual Paste Toggle
+                            TextButton(
+                                onClick = { showManualPaste = !showManualPaste },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
                             ) {
-                                Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Validate & Apply Restore")
+                                Icon(
+                                    if (showManualPaste) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    if (showManualPaste) "Hide Manual JSON Input" else "Or Paste JSON Manually",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+
+                            AnimatedVisibility(visible = showManualPaste) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = importJsonText,
+                                        onValueChange = {
+                                            importJsonText = it
+                                            restoreErrorMsg = null
+                                            restoreSuccessMsg = null
+                                        },
+                                        label = { Text("Backup JSON Content") },
+                                        placeholder = { Text("Paste {\"version\": \"3.2.0\", ...} here") },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(120.dp),
+                                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = {
+                                                val text = clipboardManager.getText()?.text ?: ""
+                                                if (text.isNotBlank()) {
+                                                    importJsonText = text
+                                                    restoreErrorMsg = null
+                                                    restoreSuccessMsg = null
+                                                }
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.ContentPaste, contentDescription = null, Modifier.size(16.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Paste from Clipboard", style = MaterialTheme.typography.labelSmall)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                if (importJsonText.isBlank()) {
+                                                    restoreErrorMsg = "Please enter or paste JSON backup data first."
+                                                    return@Button
+                                                }
+                                                val result = settings.restoreBackupFromJson(importJsonText)
+                                                result.onSuccess { msg ->
+                                                    restoreSuccessMsg = msg
+                                                    restoreErrorMsg = null
+                                                    onBackupRestored()
+                                                }.onFailure { err ->
+                                                    restoreErrorMsg = "Invalid backup format: ${err.message}"
+                                                    restoreSuccessMsg = null
+                                                }
+                                            },
+                                            enabled = importJsonText.isNotBlank(),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(16.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Apply", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

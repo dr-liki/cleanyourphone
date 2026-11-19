@@ -77,6 +77,7 @@ fun WirelessScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
+    var logFilter by remember { mutableStateOf(LogFilterType.ALL) }
 
     // Dynamic scan port input
     var portInput by remember { mutableStateOf(customScanPort.toString()) }
@@ -582,6 +583,8 @@ fun WirelessScreen(
                     ActionLogContent(
                         actionLog = actionLog,
                         searchQuery = searchQuery,
+                        selectedFilter = logFilter,
+                        onFilterChange = { logFilter = it },
                         fixedDevice = connectedName,
                         onUndoAction = { viewModel.undoAction(it) },
                         onUndoMultipleActions = { list ->

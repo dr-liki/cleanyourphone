@@ -5,7 +5,7 @@
 **Modern, open-source Android debloater for smartphones, tablets, and Android/Google TVs.**  
 *Debloat directly on-device with privileged Shizuku access, or wirelessly across your local network over Wireless ADB.*
 
-[![Release](https://img.shields.io/badge/Release-v3.1.0-0284C7?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v3.1.0)
+[![Release](https://img.shields.io/badge/Release-v3.2.0-0284C7?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v3.2.0)
 [![Android Compatibility](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%2B)-059669?style=flat-square&logo=android)](#compatibility)
 [![Privilege Architecture](https://img.shields.io/badge/Engines-Shizuku%20%7C%20Wireless%20ADB-4F46E5?style=flat-square)](#-core-architecture--modes)
 [![Debloat Databases](https://img.shields.io/badge/Catalogs-UAD--ng%20%26%20CleanYourTV-D97706?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
@@ -236,15 +236,16 @@ Brand-specific apps display a clean **Brand Specific** badge and can be isolated
 
 ---
 
-### 6. JSON Snapshot Backup & Migration
+### 6. File-Based Backup & Migration (.json)
 
-- **Create Backup**:
+- **Create Backup File**:
   - Open `Menu (⋮)` → **Backup & Restore**.
-  - Inspect the snapshot summary (saved profiles, action logs, custom repositories).
-  - Tap **Copy JSON to Clipboard** or **Share Snapshot** to export.
-- **Restore Snapshot**:
-  - Paste snapshot JSON into the dialog and tap **Restore from JSON**.
-  - Profiles and action logs are safely merged into local storage.
+  - Inspect the snapshot summary (saved profiles, action logs, catalog repository URLs).
+  - Tap **Save Backup File (.json)** to store directly to your device downloads or cloud drive via the system Storage Access Framework (SAF).
+- **Restore from Backup File**:
+  - Open `Menu (⋮)` → **Backup & Restore** → **Import File**.
+  - Tap **Select Backup File (.json)** and pick your backup from storage.
+  - Device profiles and action history logs are validated and safely merged.
 
 ---
 
@@ -287,7 +288,7 @@ All official release builds are signed with a permanent release keystore:
   ```
 - **Verify APK Signature**:
   ```bash
-  apksigner verify --print-certs CleanYourPhone-v3.1.0.apk
+  apksigner verify --print-certs CleanYourPhone-v3.2.0.apk
   ```
 
 ---
