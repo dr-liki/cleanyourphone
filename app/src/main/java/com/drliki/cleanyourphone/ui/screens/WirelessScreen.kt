@@ -734,20 +734,24 @@ fun WirelessScreen(
     // Pairing Dialog
     if (showPairingDialog) {
         val detectedPairing = discoveredPairingService
-        val matchingPort = detectedPairing?.host?.let { viewModel.getMatchingConnectPort(it) }
+        val matchingPort = detectedPairing?.host?.let { viewModel.getMatchingConnectPort(it) } ?: 0
         PairingDialog(
             qrPayload = pairingQrPayload,
             pairingCode = pairingCode,
-            isLoading = isLoading,
-            discoveredHost = detectedPairing?.host,
-            discoveredPairingPort = detectedPairing?.port,
-            matchingConnectPort = matchingPort,
-            onDismiss = { showPairingDialog = false },
+            discoveredHost = detectedPairing?.host ?: "",
+            discoveredPairingPort = detectedPairing?.port ?: 0,
+            discoveredConnectPort = matchingPort,
+            discoveredDeviceName = detectedPairing?.serviceName ?: "",
+            onRegenerateQr = { viewModel.generateNewPairingCredentials() },
             onPairWithCode = { host, pairingPort, code, connectPort ->
                 viewModel.pairWithCode(host, pairingPort, code, connectPort)
                 showPairingDialog = false
             },
-            onRegenerate = { viewModel.generateNewPairingCredentials() }
+            onDirectConnect = { host, port ->
+                viewModel.connectManual(host, port)
+                showPairingDialog = false
+            },
+            onDismiss = { showPairingDialog = false }
         )
     }
 
