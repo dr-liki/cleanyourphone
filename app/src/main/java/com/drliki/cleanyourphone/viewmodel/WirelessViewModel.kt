@@ -404,20 +404,6 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
-                val updated = entry.copy(isUndone = true)
-                settings.updateAction(updated)
-                _actionLog.value = _actionLog.value.map {
-                    if (it.id == entry.id) updated else it
-                }
-                _packages.value = _packages.value.map {
-                    if (it.packageName == entry.packageName) it.copy(isEnabled = true) else it
-                }
-                _snackbar.value = "Undone: ${entry.appLabel}"
-            }.onFailure {
-                _snackbar.value = "Failed to undo: ${it.message}"
-            }
-        }
-    }
 
     fun clearSnackbar() { _snackbar.value = null }
 

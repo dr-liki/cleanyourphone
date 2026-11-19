@@ -265,7 +265,7 @@ fun PackageManagementContent(
                                             }
                                         },
                                         onClick = {
-                                            selectedSort = option
+                                            onSortChange(option)
                                             showSortMenu = false
                                         }
                                     )
