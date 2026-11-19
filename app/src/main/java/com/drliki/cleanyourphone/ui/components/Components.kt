@@ -390,7 +390,6 @@ fun PackageManagementContent(
                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
                 }
             }
-            }
         }
     }
 }
