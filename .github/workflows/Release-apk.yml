@@ -133,14 +133,17 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            ### 🌟 What's New in v2.9.0
-            - **🔍 Top Header Search Action**: Moved search inputs from individual tabs into the top header as an action button beside the menu button.
-            - **⭐ Brand-Tailored Recommendations**: Automatically identifies connected phone and TV brand/model (Samsung, Xiaomi, POCO, Google Pixel, OnePlus, OPPO, Vivo, Motorola, Sony, TCL, etc.) and highlights tailored recommendations.
-            - **🏷️ Unlisted Tier Filter**: Added Unlisted filter chip to the Removal Tiers filter row for easy management of uncataloged packages.
-            - **📱 Comprehensive Device Specs in Shizuku Mode**: Tab 1 ("Status") now provides full hardware and OS specifications on the local device directly.
-            - **🗑️ Saved Profile Delete with Confirmation**: Added a Delete button with an explicit confirmation dialog right beside the Connect button on saved profiles.
-            - **📌 Persistent Filter Selections**: All search queries, type filters, safety tiers, and sorting preferences are preserved across tab switches and app sessions.
-            - **⚡ Continuous Connection & Auto-Reconnect**: Implemented 15-second background keepalive heartbeat loop and automatic socket reconnect on drops for uninterrupted debloating.
+            ### 🌟 What's New in v3.0.0
+            - **🧹 Clear Discovered Devices**: Added a Clear button beside Re-scan on the Scan Network page to instantly wipe stale network scan results.
+            - **📜 Streamlined Action Logs**: Removed the "Active" tab so you can switch seamlessly between "All Actions" and "Restored". Inside Wireless ADB mode, Action Logs are strictly isolated to the connected device.
+            - **🎯 Direct Action Log Access**: Tapping any saved device profile in disconnected state opens that device's historical Action Log.
+            - **🟢 Live Device Availability Indicator**: Saved profiles dynamically show an "Available" status badge when reachable on the local Wi-Fi network.
+            - **✨ Cleaner Saved Profiles & Status Tabs**: Removed redundant remembered headers, "+ Pair New" buttons, and "View & Manage" buttons for a cleaner interface.
+            - **🔔 Dismissible Pairing Banner**: Wireless pairing detection banner now features a dismiss button, showing the device name on line 1 and network host:port on line 2.
+            - **🔍 Refined Header Search Bar**: Beautiful full-width Material 3 search bar with proper contrast, zero obscured text, autofocus, and instant keyboard activation.
+            - **🏷️ Brand Specific Badges**: App cards now feature clean "Brand Specific" badges without verbose card-body text clutter.
+            - **📱 Smart Wireless App Label Resolver**: Robust OEM and TV package name resolution displaying friendly app names instead of raw reversed domain names.
+            - **ℹ️ Minimalist About Dialog**: Clean, professional, and decluttered About information.
 
             ### 📦 Downloads
             | File | For |
