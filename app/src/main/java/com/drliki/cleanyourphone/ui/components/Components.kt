@@ -11,6 +11,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,9 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.drliki.cleanyourphone.model.ActionLogEntry
@@ -43,6 +51,72 @@ enum class AppSortOption(val label: String, val shortLabel: String) {
     TIER_SAFETY("Safety Tier (Safest first)", "Safety"),
     STATUS_DISABLED("Disabled first", "Disabled"),
     STATUS_ENABLED("Enabled first", "Enabled")
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  TopHeaderSearchBar — full-width, non-obscured search field with auto keyboard
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun TopHeaderSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onCloseSearch: () -> Unit,
+    placeholder: String = "Search packages...",
+    modifier: Modifier = Modifier
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onCloseSearch) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "Close search")
+        }
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (query.isEmpty()) {
+                        Text(
+                            placeholder,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+        if (query.isNotEmpty()) {
+            IconButton(onClick = { onQueryChange("") }) {
+                Icon(Icons.Default.Clear, contentDescription = "Clear search", modifier = Modifier.size(20.dp))
+            }
+        }
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -173,7 +247,7 @@ fun PackageManagementContent(
                             FilterChip(
                                 selected = isTailoredFilter,
                                 onClick = { onTailoredFilterChange(!isTailoredFilter) },
-                                label = { Text("Tailored ($tailoredCount)") },
+                                label = { Text("Brand Specific ($tailoredCount)") },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Default.Star,
@@ -520,10 +594,10 @@ fun PackageCard(
                     // Removal Tier Badge
                     TierBadgePill(pkg.tier)
 
-                    // Tailored Brand Recommendation Badge
+                    // Brand Specific Recommendation Badge
                     if (pkg.isTailored) {
                         BadgePill(
-                            label = "Tailored",
+                            label = "Brand Specific",
                             color = Color(0xFFB45309),
                             bgColor = Color(0xFFFEF3C7)
                         )
@@ -561,17 +635,6 @@ fun PackageCard(
                         text = "🔒 $reason",
                         style = MaterialTheme.typography.labelSmall,
                         color = TierUnsafe,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                // Tailored device recommendation reason if present
-                pkg.tailoredReason?.let { reason ->
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "⭐ $reason",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFB45309),
                         fontWeight = FontWeight.Medium
                     )
                 }

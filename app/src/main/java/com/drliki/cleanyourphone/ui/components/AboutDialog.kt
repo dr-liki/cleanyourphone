@@ -23,7 +23,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.drliki.cleanyourphone.R
-import com.drliki.cleanyourphone.ui.theme.TierRecommended
 
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -75,7 +74,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.9.0 · Material Design 3",
+                        "v3.0.0 · Material Design 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -92,82 +91,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(16.dp))
-
-                // Feature Highlights
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    AboutFeatureRow(
-                        icon = Icons.Default.PhoneAndroid,
-                        title = "Dual Operation Architecture",
-                        subtitle = "On-device privileged debloating via Shizuku (UID 2000) or wireless ADB over local Wi-Fi with Android 11+ SPAKE2 / TLS 1.3 pairing."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Tv,
-                        title = "Phone & Android TV Databases",
-                        subtitle = "Integrates Universal Android Debloater (UAD-ng) for phones/tablets and CleanYourTV with 2,400+ definitions for Android/Google TVs."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Star,
-                        title = "Brand-Tailored Recommendations",
-                        subtitle = "Automatically identifies connected device brand & model (Samsung, Xiaomi, Pixel, OnePlus, Sony, TCL, etc.) to curate recommendations."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.PermDeviceInformation,
-                        title = "Deep Device & OS Analytics",
-                        subtitle = "Comprehensive hardware specs, Android version, display resolution/density, and CPU architecture in both Shizuku and Wireless modes."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Search,
-                        title = "Top Header Search & Persistent Filters",
-                        subtitle = "Seamless header search action button, Unlisted tier filter, and persistent filter state across tab navigation."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.WifiTethering,
-                        title = "Continuous Connection & Auto-Reconnect",
-                        subtitle = "15-second background keepalive heartbeat ping and automatic socket reconnection prevent idle connection timeouts."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Backup,
-                        title = "JSON Snapshot Backup & Restore",
-                        subtitle = "Export and import device profiles, persistent action logs, and repository settings via clipboard or native share sheet."
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // Safety Callout Box
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Shield,
-                            contentDescription = "Safe",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "Non-Destructive & Reversible: Packages are disabled for the current user (pm disable-user --user 0). System partition files are never deleted and can be re-enabled at any time.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
 
                 // Open Source Credits
                 Text(
@@ -188,7 +112,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // Actions: GitHub and Close
                 Row(
@@ -224,40 +148,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AboutFeatureRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = TierRecommended,
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(18.dp)
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

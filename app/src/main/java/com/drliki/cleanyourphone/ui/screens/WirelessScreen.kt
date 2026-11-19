@@ -30,6 +30,7 @@ import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.BadgePill
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
 import com.drliki.cleanyourphone.ui.components.PairingDialog
+import com.drliki.cleanyourphone.ui.components.TopHeaderSearchBar
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.ui.theme.TierUnsafe
 import com.drliki.cleanyourphone.viewmodel.WirelessViewModel
@@ -42,7 +43,7 @@ import java.util.Locale
 fun WirelessScreen(
     viewModel: WirelessViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToActionLog: () -> Unit,
+    onNavigateToActionLog: (String?) -> Unit = {},
     onOpenSettings: () -> Unit
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
@@ -102,23 +103,14 @@ fun WirelessScreen(
             TopAppBar(
                 title = {
                     if (isSearchActive) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.searchQuery.value = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            placeholder = { Text("Search apps by name or ID…") },
-                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
-                                        Icon(Icons.Default.Clear, "Clear")
-                                    }
-                                }
+                        TopHeaderSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { viewModel.searchQuery.value = it },
+                            onCloseSearch = {
+                                viewModel.isSearchActive.value = false
+                                viewModel.searchQuery.value = ""
                             },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
+                            placeholder = "Search apps by name or ID…"
                         )
                     } else {
                         Column {
@@ -147,41 +139,29 @@ fun WirelessScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (isSearchActive) {
-                            viewModel.isSearchActive.value = false
-                            viewModel.searchQuery.value = ""
-                        } else {
-                            onNavigateBack()
+                    if (!isSearchActive) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
-                            contentDescription = if (isSearchActive) "Close search" else "Back"
-                        )
                     }
                 },
                 actions = {
-                    // Search button beside menu
-                    IconButton(onClick = {
-                        val willBeActive = !isSearchActive
-                        viewModel.isSearchActive.value = willBeActive
-                        if (!willBeActive) viewModel.searchQuery.value = ""
-                        if (willBeActive && isConnected && selectedNavTab == 0) {
-                            selectedNavTab = 1
+                    if (!isSearchActive) {
+                        // Search button beside menu
+                        IconButton(onClick = {
+                            viewModel.isSearchActive.value = true
+                            if (isConnected && selectedNavTab == 0) {
+                                selectedNavTab = 1
+                            }
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
 
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                            }
+                            DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
                         ) {
@@ -312,10 +292,13 @@ fun WirelessScreen(
                                     // ── Sub-Tab 0: Saved Profiles (No pairing banner here!) ──
                                     SavedProfilesContent(
                                         profiles = savedProfiles,
+                                        availableDevices = devices,
                                         isLoading = isLoading,
                                         onConnect = { viewModel.connectToProfile(it) },
                                         onDelete = { viewModel.deleteProfile(it.id) },
-                                        onNewPairing = { showPairingDialog = true },
+                                        onOpenActionLog = { devName ->
+                                            onNavigateToActionLog(devName)
+                                        },
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -340,23 +323,34 @@ fun WirelessScreen(
                                                         Spacer(Modifier.width(8.dp))
                                                         Column {
                                                             Text(
-                                                                "Pairing request detected!",
-                                                                style = MaterialTheme.typography.labelSmall,
+                                                                pairing.serviceName.ifBlank { "Wireless Debugging Device" },
+                                                                style = MaterialTheme.typography.labelMedium,
                                                                 fontWeight = FontWeight.Bold,
-                                                                color = TierRecommended
+                                                                color = MaterialTheme.colorScheme.onSurface
                                                             )
                                                             Text(
-                                                                "${pairing.serviceName} (${pairing.host}:${pairing.port})",
-                                                                style = MaterialTheme.typography.bodySmall
+                                                                "${pairing.host}:${pairing.port}",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                fontFamily = FontFamily.Monospace,
+                                                                color = TierRecommended
                                                             )
                                                         }
                                                     }
-                                                    Button(
-                                                        onClick = { showPairingDialog = true },
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                                        shape = RoundedCornerShape(8.dp)
-                                                    ) {
-                                                        Text("Pair Now", style = MaterialTheme.typography.labelSmall)
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Button(
+                                                            onClick = { showPairingDialog = true },
+                                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                            shape = RoundedCornerShape(8.dp)
+                                                        ) {
+                                                            Text("Pair Now", style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                        Spacer(Modifier.width(4.dp))
+                                                        IconButton(
+                                                            onClick = { viewModel.dismissPairingService() },
+                                                            modifier = Modifier.size(32.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(18.dp))
+                                                        }
                                                     }
                                                 }
                                             }
@@ -486,8 +480,13 @@ fun WirelessScreen(
                                                         style = MaterialTheme.typography.titleSmall,
                                                         fontWeight = FontWeight.SemiBold
                                                     )
-                                                    TextButton(onClick = { viewModel.startScan() }) {
-                                                        Text("Re-scan")
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        TextButton(onClick = { viewModel.clearDiscoveredDevices() }) {
+                                                            Text("Clear")
+                                                        }
+                                                        TextButton(onClick = { viewModel.startScan() }) {
+                                                            Text("Re-scan")
+                                                        }
                                                     }
                                                 }
                                                 Spacer(Modifier.height(6.dp))
@@ -578,10 +577,11 @@ fun WirelessScreen(
                     }
                 }
                 2 -> {
-                    // ── Tab 2: Action Log ────────────────────────────────────────
+                    // ── Tab 2: Action Log (Only Connected Device) ───────────────
                     ActionLogContent(
                         actionLog = actionLog,
                         searchQuery = searchQuery,
+                        fixedDevice = connectedName,
                         onUndoAction = { viewModel.undoAction(it) },
                         onUndoMultipleActions = { list ->
                             list.forEach { viewModel.undoAction(it) }
@@ -678,7 +678,7 @@ private fun ConnectedDeviceInfoContent(
     tailoredCount: Int = 0,
     tvCatalogSize: Int,
     onDisconnect: () -> Unit,
-    onManagePackages: () -> Unit
+    onManagePackages: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -928,7 +928,7 @@ private fun ConnectedDeviceInfoContent(
                             Icon(Icons.Default.Star, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                "$tailoredCount package(s) specifically tailored for ${deviceInfo?.brand ?: "this device"}.",
+                                "$tailoredCount brand specific package(s) for ${deviceInfo?.brand ?: "this device"}.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFFB45309),
                                 fontWeight = FontWeight.SemiBold
@@ -937,19 +937,6 @@ private fun ConnectedDeviceInfoContent(
                     }
                 }
             }
-        }
-
-        // Action: Jump to Packages
-        Button(
-            onClick = onManagePackages,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Text("View & Manage Packages", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.ArrowForward, contentDescription = null, Modifier.size(18.dp))
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1002,10 +989,12 @@ private fun RowScope.StatBox(label: String, value: String, color: Color) {
 @Composable
 private fun SavedProfilesContent(
     profiles: List<SavedDeviceProfile>,
+    availableDevices: List<DiscoveredDevice> = emptyList(),
     isLoading: Boolean,
     onConnect: (SavedDeviceProfile) -> Unit,
     onDelete: (SavedDeviceProfile) -> Unit,
-    onNewPairing: () -> Unit,
+    onOpenActionLog: (String) -> Unit = {},
+    onNewPairing: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (profiles.isEmpty()) {
@@ -1050,30 +1039,15 @@ private fun SavedProfilesContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Remembered Device Profiles",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = onNewPairing) {
-                        Icon(Icons.Default.Add, contentDescription = null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Pair New")
-                    }
-                }
-            }
             items(profiles, key = { it.id }) { profile ->
+                val isAvailable = availableDevices.any { it.host == profile.host }
                 SavedDeviceProfileCard(
                     profile = profile,
+                    isAvailable = isAvailable,
                     isLoading = isLoading,
                     onConnect = { onConnect(profile) },
-                    onDelete = { onDelete(profile) }
+                    onDelete = { onDelete(profile) },
+                    onOpenActionLog = { onOpenActionLog(profile.name) }
                 )
             }
         }
@@ -1083,13 +1057,16 @@ private fun SavedProfilesContent(
 @Composable
 private fun SavedDeviceProfileCard(
     profile: SavedDeviceProfile,
+    isAvailable: Boolean = false,
     isLoading: Boolean,
     onConnect: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onOpenActionLog: () -> Unit
 ) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     ElevatedCard(
+        onClick = onOpenActionLog,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp)
     ) {
@@ -1112,7 +1089,7 @@ private fun SavedDeviceProfileCard(
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         profile.name,
                         style = MaterialTheme.typography.titleSmall,
@@ -1123,6 +1100,13 @@ private fun SavedDeviceProfileCard(
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (isAvailable) {
+                    BadgePill(
+                        label = "Available",
+                        color = TierRecommended,
+                        bgColor = TierRecommended.copy(alpha = 0.15f)
                     )
                 }
             }
@@ -1168,6 +1152,25 @@ private fun SavedDeviceProfileCard(
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Connect Device", style = MaterialTheme.typography.labelMedium)
+                }
+
+                OutlinedButton(
+                    onClick = { showDeleteConfirmDialog = true },
+                    modifier = Modifier.height(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
                 ) {
                     Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))

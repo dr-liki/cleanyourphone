@@ -140,6 +140,14 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun clearDiscoveredDevices() {
+        _devices.value = emptyList()
+    }
+
+    fun dismissPairingService() {
+        _discoveredPairingService.value = null
+    }
+
     fun connectTo(device: DiscoveredDevice) {
         viewModelScope.launch {
             _isLoading.value = true

@@ -27,6 +27,123 @@ class UadRepository(private val context: Context) {
         const val CLEANYOURTV_REMOTE_URL = AppSettings.DEFAULT_TV_REPO_URL
         private const val CACHE_FILE_NAME = "uad_lists.json"
         private const val CACHE_TV_FILE_NAME = "cleanyourtv_lists.json"
+
+        private val KNOWN_APP_LABELS = mapOf(
+            // Samsung
+            "com.sec.android.app.sbrowser" to "Samsung Internet",
+            "com.sec.android.app.popupcalculator" to "Samsung Calculator",
+            "com.sec.android.app.myfiles" to "Samsung My Files",
+            "com.sec.android.app.voicenote" to "Voice Recorder",
+            "com.sec.android.app.camera" to "Samsung Camera",
+            "com.sec.android.gallery3d" to "Samsung Gallery",
+            "com.sec.android.app.clockpackage" to "Samsung Clock",
+            "com.samsung.android.app.notes" to "Samsung Notes",
+            "com.samsung.android.calendar" to "Samsung Calendar",
+            "com.samsung.android.messaging" to "Samsung Messages",
+            "com.samsung.android.dialer" to "Samsung Phone",
+            "com.samsung.android.contacts" to "Samsung Contacts",
+            "com.samsung.android.voc" to "Samsung Members",
+            "com.samsung.android.app.spage" to "Samsung Free",
+            "com.samsung.android.game.gos" to "Game Optimizing Service",
+            "com.samsung.android.game.gamehome" to "Gaming Hub",
+            "com.samsung.android.bixby.agent" to "Bixby Voice",
+            "com.samsung.android.bixby.wakeup" to "Bixby Wakeup",
+            "com.samsung.android.bixby.service" to "Bixby Service",
+            "com.samsung.android.visionintelligence" to "Bixby Vision",
+            "com.samsung.android.smartswitchassistant" to "Smart Switch",
+            "com.samsung.android.oneconnect" to "SmartThings",
+            "com.samsung.android.rubin.app" to "Customization Service",
+            "com.samsung.android.kidsinstaller" to "Samsung Kids",
+            "com.samsung.android.app.sharelive" to "Quick Share",
+            "com.samsung.android.ardrawing" to "AR Doodle",
+            "com.samsung.android.aremoji" to "AR Emoji",
+            "com.samsung.android.arzone" to "AR Zone",
+            "com.samsung.android.spay" to "Samsung Wallet",
+            "com.samsung.android.samsungpass" to "Samsung Pass",
+            "com.samsung.android.app.tips" to "Tips",
+            "com.samsung.android.weather" to "Samsung Weather",
+            "com.samsung.android.mdecservice" to "Call & Text on other devices",
+
+            // Xiaomi / MIUI / HyperOS
+            "com.miui.analytics" to "Xiaomi Analytics",
+            "com.miui.msa.global" to "MIUI System Ads (MSA)",
+            "com.miui.cleanmaster" to "Cleaner",
+            "com.miui.cloudservice" to "Mi Cloud",
+            "com.miui.yellowpage" to "Yellow Pages",
+            "com.miui.videoplayer" to "Mi Video",
+            "com.miui.player" to "Mi Music",
+            "com.miui.weather2" to "Mi Weather",
+            "com.miui.compass" to "Compass",
+            "com.miui.calculator" to "Mi Calculator",
+            "com.miui.notes" to "Mi Notes",
+            "com.miui.gallery" to "Mi Gallery",
+            "com.miui.bugreport" to "Feedback",
+            "com.xiaomi.joyose" to "Joyose",
+            "com.xiaomi.midrop" to "ShareMe",
+            "com.xiaomi.mipicks" to "GetApps",
+            "com.xiaomi.payment" to "Mi Pay",
+            "com.xiaomi.scanner" to "Scanner",
+
+            // Google
+            "com.google.android.gms" to "Google Play Services",
+            "com.google.android.gsf" to "Google Services Framework",
+            "com.android.vending" to "Google Play Store",
+            "com.google.android.youtube" to "YouTube",
+            "com.google.android.apps.youtube.music" to "YouTube Music",
+            "com.google.android.videos" to "Google TV",
+            "com.google.android.apps.photos" to "Google Photos",
+            "com.google.android.apps.docs" to "Google Drive",
+            "com.google.android.apps.maps" to "Google Maps",
+            "com.google.android.gm" to "Gmail",
+            "com.google.android.googlequicksearchbox" to "Google App",
+            "com.google.android.inputmethod.latin" to "Gboard",
+            "com.android.chrome" to "Google Chrome",
+            "com.google.android.apps.messaging" to "Google Messages",
+            "com.google.android.dialer" to "Google Phone",
+            "com.google.android.contacts" to "Google Contacts",
+            "com.google.android.calendar" to "Google Calendar",
+            "com.google.android.keep" to "Google Keep",
+            "com.google.android.apps.tachyon" to "Google Meet",
+            "com.google.android.apps.wellbeing" to "Digital Wellbeing",
+
+            // Meta
+            "com.facebook.katana" to "Facebook",
+            "com.facebook.orca" to "Messenger",
+            "com.facebook.services" to "Meta Services",
+            "com.facebook.appmanager" to "Meta App Manager",
+            "com.facebook.system" to "Meta App Installer",
+            "com.instagram.android" to "Instagram",
+            "com.whatsapp" to "WhatsApp",
+
+            // Microsoft
+            "com.microsoft.office.officehubrow" to "Microsoft 365 (Office)",
+            "com.microsoft.office.outlook" to "Microsoft Outlook",
+            "com.microsoft.skydrive" to "Microsoft OneDrive",
+            "com.microsoft.appmanager" to "Link to Windows",
+            "com.linkedin.android" to "LinkedIn",
+
+            // Streaming / Media / TV
+            "com.netflix.ninja" to "Netflix",
+            "com.netflix.mediaclient" to "Netflix",
+            "com.amazon.amazonvideo.livingroom" to "Prime Video",
+            "com.amazon.mp3" to "Amazon Music",
+            "com.amazon.mShop.android.shopping" to "Amazon Shopping",
+            "com.spotify.music" to "Spotify",
+            "com.spotify.tv.android" to "Spotify on TV",
+            "com.disney.disneyplus" to "Disney+",
+            "com.hulu.plus" to "Hulu",
+            "com.google.android.tv.launcher" to "Android TV Home",
+            "com.google.android.tungsten.setupwraith" to "Android TV Setup",
+
+            // Other OEMs
+            "com.coloros.athena" to "Athena Engine",
+            "com.oplus.cosa" to "OPPO System Assistant",
+            "com.heytap.mcs" to "HeyTap Cloud",
+            "com.vivo.browser" to "Vivo Browser",
+            "com.vivo.easyshare" to "EasyShare",
+            "com.motorola.ccc.notification" to "Motorola Notifications",
+            "com.sonyericsson.organizer" to "Sony Organizer"
+        )
     }
 
     private val cacheFile: File
@@ -255,9 +372,11 @@ class UadRepository(private val context: Context) {
                 val isEnabled = pkgName !in categorized.disabledPackages
                 val (isTailored, tailoredReason) = checkTailored(pkgName, entry, matcher, model)
 
+                val appLabel = resolveAppLabel(pkgName, entry, isTv)
+
                 DevicePackage(
                     packageName = pkgName,
-                    appLabel = pkgName.substringAfterLast('.').replaceFirstChar { it.uppercase() },
+                    appLabel = appLabel,
                     tier = tier,
                     category = category,
                     description = description,
@@ -297,9 +416,10 @@ class UadRepository(private val context: Context) {
                 val description = tvEntry?.description ?: phoneEntry?.description
                     ?: if (isTv) "Not cataloged in CleanYourTV database." else "Not cataloged in UAD-ng database."
                 val (isTailored, tailoredReason) = checkTailored(pkgName, entry, matcher, model)
+                val appLabel = resolveAppLabel(pkgName, entry, isTv)
                 DevicePackage(
                     packageName = pkgName,
-                    appLabel = pkgName.substringAfterLast('.').replaceFirstChar { it.uppercase() },
+                    appLabel = appLabel,
                     tier = tier,
                     category = category,
                     description = description,
@@ -348,5 +468,65 @@ class UadRepository(private val context: Context) {
         pkgName in PROTECTED_PACKAGES -> "Protected core system package"
         tier == RemovalTier.UNSAFE -> "Classified Unsafe by UAD-ng — high bootloop risk"
         else -> null
+    }
+
+    /** Resolve clean, human-readable application label for packages across local and remote devices */
+    fun resolveAppLabel(pkgName: String, entry: UadEntry?, isTv: Boolean = false): String {
+        // 1. Try local PackageManager if installed on host device
+        val localLabel = runCatching {
+            val appInfo = context.packageManager.getApplicationInfo(pkgName, 0)
+            context.packageManager.getApplicationLabel(appInfo).toString()
+        }.getOrNull()
+        if (!localLabel.isNullOrBlank() && localLabel != pkgName) {
+            return localLabel
+        }
+
+        // 2. Check well-known package dictionary
+        KNOWN_APP_LABELS[pkgName]?.let { return it }
+
+        // 3. Extract title from UAD-ng / CleanYourTV description if present
+        entry?.description?.let { desc ->
+            val clean = desc.trim()
+            if (clean.isNotBlank() &&
+                !clean.startsWith("Not cataloged", ignoreCase = true) &&
+                !clean.startsWith("(CleanYourTV", ignoreCase = true)
+            ) {
+                val firstDelim = clean.indexOfAny(charArrayOf('.', ':', '—', '-'))
+                if (firstDelim in 3..45) {
+                    val candidate = clean.substring(0, firstDelim).trim()
+                    if (!candidate.startsWith("This ", ignoreCase = true) &&
+                        !candidate.startsWith("The ", ignoreCase = true) &&
+                        !candidate.startsWith("A ", ignoreCase = true) &&
+                        !candidate.startsWith("An ", ignoreCase = true) &&
+                        !candidate.startsWith("Used ", ignoreCase = true) &&
+                        !candidate.startsWith("Disabling ", ignoreCase = true) &&
+                        !candidate.startsWith("Pre-installed ", ignoreCase = true) &&
+                        !candidate.startsWith("Preinstalled ", ignoreCase = true) &&
+                        !candidate.startsWith("System ", ignoreCase = true)
+                    ) {
+                        return candidate
+                    }
+                }
+            }
+        }
+
+        // 4. Parse friendly title from package segments
+        return formatFriendlyPackageName(pkgName)
+    }
+
+    private fun formatFriendlyPackageName(pkgName: String): String {
+        val parts = pkgName.split('.').filter { it.isNotBlank() }
+        val ignored = setOf("com", "org", "net", "android", "google", "app", "apps", "vendor", "service", "services", "system")
+        val meaningful = parts.filter { it.lowercase() !in ignored }
+        val target = meaningful.lastOrNull() ?: parts.lastOrNull() ?: pkgName
+        // Split camelCase and underscores into title-cased words
+        val words = target.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .map { it.replaceFirstChar { c -> c.uppercase() } }
+
+        return if (words.isNotEmpty()) words.joinToString(" ") else target.replaceFirstChar { it.uppercase() }
     }
 }

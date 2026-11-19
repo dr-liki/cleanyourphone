@@ -123,7 +123,7 @@ data class RemoteDeviceInfo(
 // ── Comprehensive backup snapshot data ───────────────────────────────────────
 @Serializable
 data class AppBackupData(
-    val version: String = "2.9.0",
+    val version: String = "3.0.0",
     val timestamp: Long = System.currentTimeMillis(),
     val exportedDate: String = "",
     val savedProfiles: List<SavedDeviceProfile> = emptyList(),

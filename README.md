@@ -5,7 +5,7 @@
 **Modern, open-source Android debloater for phones, tablets, and Android/Google TVs.**  
 *Debloat directly on-device with privileged Shizuku access, or connect wirelessly to other phones and TVs over local Wi-Fi.*
 
-[![Latest Release](https://img.shields.io/badge/Release-v2.9.0-38BDF8?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v2.9.0)
+[![Latest Release](https://img.shields.io/badge/Release-v3.0.0-38BDF8?style=flat-square&logo=github)](https://github.com/dr-liki/cleanyourphone/releases/tag/v3.0.0)
 [![Android Compatibility](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%2B)-10B981?style=flat-square&logo=android)](#compatibility)
 [![Privilege Architecture](https://img.shields.io/badge/Engines-Shizuku%20%7C%20Wireless%20ADB-818CF8?style=flat-square)](#core-architecture--modes)
 [![Debloat Databases](https://img.shields.io/badge/Catalogs-UAD--ng%20%26%20CleanYourTV-F59E0B?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
@@ -32,7 +32,7 @@
   - [Managing, Searching & Filtering Apps](#4-managing-searching--filtering-apps)
   - [Restoring & Undoing Actions](#5-restoring--undoing-actions)
   - [Backup & Restore Snapshots](#6-backup--restore-snapshots)
-- [Latest Release Highlights (v2.9.0)](#-latest-release-highlights-v290)
+- [Latest Release Highlights (v3.0.0)](#-latest-release-highlights-v300)
 - [Technical Architecture](#-technical-architecture)
 - [Building from Source & Signing](#-building-from-source--signing)
 - [Open Source Credits & Acknowledgements](#-open-source-credits--acknowledgements)
@@ -232,17 +232,22 @@ CleanYourPhone includes a full JSON snapshot manager in the top menu:
 
 ---
 
-## 🌟 Latest Release Highlights (v2.9.0)
+## 🌟 Latest Release Highlights (v3.0.0)
 
-- **🔍 Top Header Search Action**: Replaced inline search text boxes with a top app bar search action icon beside the menu button for a clean Material 3 header.
-- **⭐ Tailored Brand & Model Recommendations**: Automatic OEM brand/model identification with brand badges, tailored filter chip, and prioritized safety sorting.
-- **🏷️ Unlisted Tier Filter**: Added `Unlisted` filter chip to the Removal Tiers row for comprehensive cataloging and inspection.
-- **📱 Comprehensive Device Specs in Shizuku Mode**: Tab 1 ("Status") in Shizuku mode now displays full hardware specifications, display resolution/density, CPU ABI architecture, and live package metrics.
-- **🗑️ Saved Profile Deletion with Confirmation**: Added a Delete button with a Material 3 confirmation dialog right beside the Connect button on saved profile cards.
-- **📌 Persistent Filter Selections**: Filters, search queries, safety tiers, and sort options remain persistent across tab switches and app sessions.
-- **⚡ Continuous Connection & Auto-Reconnect**: Implemented 15-second background keepalive heartbeat ping loop and automatic socket reconnect on network drops.
+- **🔍 Full-Width Keyboard-Activated Search**: Redesigned header search bar that immediately requests focus and triggers the soft keyboard with clean contrast and zero obscured text.
+- **🏷️ Proper App Name Analysis in Wireless ADB**: Multi-stage application label resolver that extracts official names from local PackageManager, catalog definitions, and an OEM dictionary covering 150+ apps (Samsung, Xiaomi, Google, Meta, Microsoft, TVs).
+- **🧹 Discovered Devices Clear Action**: Added a convenient "Clear" button beside the "Re-scan" button in the Scan Network view.
+- **📜 Streamlined Action Log**: Removed redundant "Active" filter tab across all action log pages; now cleanly displays "All Actions" and "Restored".
+- **🔒 Connected Device Isolation**: When inside Wireless ADB mode for a connected device, the Action Log strictly isolates actions to that connected device. The main activity log from the mode selection screen preserves full cross-device history.
+- **👆 Instant Device Profile Action Log**: Tapping any saved profile card in the disconnected state opens its specific action log directly.
+- **🟢 Live Reconnect Indicator**: Added an "Available" badge on saved device profiles when they are detected live on the network.
+- **🎨 Cleaner Saved Devices Screen**: Removed redundant "Remembered Device Profiles" text and "+ Pair New" button for a minimal aesthetic.
+- **🧭 Streamlined Tab 1 Overview**: Removed the redundant "View & Manage Packages" button from status tabs.
+- **🎯 Improved Pairing Request Banner**: Added a dismiss button, showing the device name on line 1 and network address on line 2.
+- **⭐ Brand Specific Packages**: Renamed "Tailored" to "Brand Specific", retained the clean badge pill, and removed noisy description text.
+- **🧼 Clean About Dialog**: Removed feature highlights list and callout box for a modern, focused layout.
 
-*(For detailed changelogs of v2.8.0, v2.7.0, v2.6.0, and earlier releases, visit [GitHub Releases](https://github.com/dr-liki/cleanyourphone/releases)).*
+*(For detailed changelogs of v2.9.0, v2.8.0, v2.7.0, and earlier releases, visit [GitHub Releases](https://github.com/dr-liki/cleanyourphone/releases)).*
 
 ---
 

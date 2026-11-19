@@ -56,6 +56,7 @@ fun CleanYourPhoneAppRoot(
 ) {
     var currentScreen by remember { mutableStateOf(AppScreen.MODE_SELECT) }
     var previousScreen by remember { mutableStateOf(AppScreen.MODE_SELECT) }
+    var targetDeviceFilter by remember { mutableStateOf<String?>(null) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
@@ -94,6 +95,7 @@ fun CleanYourPhoneAppRoot(
                         navigateTo(AppScreen.WIRELESS)
                     },
                     onOpenActionLog = {
+                        targetDeviceFilter = null
                         navigateTo(AppScreen.ACTION_LOG)
                     },
                     onOpenSettings = {
@@ -116,7 +118,10 @@ fun CleanYourPhoneAppRoot(
                 WirelessScreen(
                     viewModel = wirelessVm,
                     onNavigateBack = { currentScreen = AppScreen.MODE_SELECT },
-                    onNavigateToActionLog = { navigateTo(AppScreen.ACTION_LOG) },
+                    onNavigateToActionLog = { devFilter ->
+                        targetDeviceFilter = devFilter
+                        navigateTo(AppScreen.ACTION_LOG)
+                    },
                     onOpenSettings = { showSettingsDialog = true }
                 )
             }
@@ -135,6 +140,7 @@ fun CleanYourPhoneAppRoot(
                 ActionLogScreen(
                     actionLog = logToDisplay,
                     sourceTitle = logTitle,
+                    initialDeviceFilter = targetDeviceFilter,
                     onUndoAction = { entry ->
                         if (entry.mode == "SHIZUKU" || entry.deviceName.contains("Local", ignoreCase = true)) {
                             shizukuVm.undoAction(entry)
@@ -151,7 +157,10 @@ fun CleanYourPhoneAppRoot(
                             }
                         }
                     },
-                    onNavigateBack = { currentScreen = previousScreen }
+                    onNavigateBack = {
+                        targetDeviceFilter = null
+                        currentScreen = previousScreen
+                    }
                 )
             }
         }

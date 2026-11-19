@@ -19,12 +19,12 @@ import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.model.ActionLogEntry
 import com.drliki.cleanyourphone.ui.components.AppIconView
 import com.drliki.cleanyourphone.ui.components.BadgePill
+import com.drliki.cleanyourphone.ui.components.TopHeaderSearchBar
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import kotlinx.coroutines.launch
 
 enum class LogFilterType(val label: String) {
     ALL("All Actions"),
-    ACTIVE("Active (Can Undo)"),
     RESTORED("Restored")
 }
 
@@ -33,6 +33,7 @@ enum class LogFilterType(val label: String) {
 fun ActionLogScreen(
     actionLog: List<ActionLogEntry>,
     sourceTitle: String = "Action Log",
+    initialDeviceFilter: String? = null,
     onUndoAction: (ActionLogEntry) -> Unit,
     onUndoMultipleActions: (List<ActionLogEntry>) -> Unit = { list -> list.forEach(onUndoAction) },
     onNavigateBack: () -> Unit
@@ -43,30 +44,21 @@ fun ActionLogScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(LogFilterType.ALL) }
-    var selectedDevice by remember { mutableStateOf<String?>(null) }
+    var selectedDevice by remember { mutableStateOf<String?>(initialDeviceFilter) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     if (isSearchActive) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            placeholder = { Text("Search actions by app, pkg, device…") },
-                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(Icons.Default.Clear, "Clear")
-                                    }
-                                }
+                        TopHeaderSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onCloseSearch = {
+                                isSearchActive = false
+                                searchQuery = ""
                             },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
+                            placeholder = "Search actions by app, pkg, device…"
                         )
                     } else {
                         Column {
@@ -84,35 +76,23 @@ fun ActionLogScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (isSearchActive) {
-                            isSearchActive = false
-                            searchQuery = ""
-                        } else {
-                            onNavigateBack()
+                    if (!isSearchActive) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
-                            contentDescription = if (isSearchActive) "Close search" else "Back"
-                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        isSearchActive = !isSearchActive
-                        if (!isSearchActive) searchQuery = ""
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
-                    if (activeCount > 0 && !isSearchActive) {
-                        TextButton(onClick = { showRestoreAllDialog = true }) {
-                            Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Restore All")
+                    if (!isSearchActive) {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        if (activeCount > 0) {
+                            TextButton(onClick = { showRestoreAllDialog = true }) {
+                                Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Restore All")
+                            }
                         }
                     }
                 },
@@ -174,6 +154,7 @@ fun ActionLogContent(
     onFilterChange: (LogFilterType) -> Unit = {},
     selectedDevice: String? = null,
     onDeviceChange: (String?) -> Unit = {},
+    fixedDevice: String? = null,
     onUndoAction: (ActionLogEntry) -> Unit,
     onUndoMultipleActions: (List<ActionLogEntry>) -> Unit = { list -> list.forEach(onUndoAction) },
     modifier: Modifier = Modifier
@@ -192,15 +173,15 @@ fun ActionLogContent(
 
     val activeCount = actionLog.count { !it.isUndone }
     val restoredCount = actionLog.count { it.isUndone }
+    val effectiveDevice = fixedDevice ?: selectedDevice
 
-    val filteredLog = remember(actionLog, searchQuery, selectedFilter, selectedDevice) {
+    val filteredLog = remember(actionLog, searchQuery, selectedFilter, effectiveDevice) {
         actionLog.filter { entry ->
             val matchesFilter = when (selectedFilter) {
                 LogFilterType.ALL -> true
-                LogFilterType.ACTIVE -> !entry.isUndone
                 LogFilterType.RESTORED -> entry.isUndone
             }
-            val matchesDevice = selectedDevice == null || entry.deviceName == selectedDevice
+            val matchesDevice = effectiveDevice == null || entry.deviceName == effectiveDevice
             val matchesSearch = searchQuery.isBlank() ||
                 entry.appLabel.contains(searchQuery, true) ||
                 entry.packageName.contains(searchQuery, true) ||
@@ -218,8 +199,8 @@ fun ActionLogContent(
         modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Device Filter Chips (shown when actions from multiple device connections exist)
-            if (distinctDevices.size > 1) {
+            // Device Filter Chips (shown only when not locked to a fixed device and multiple device connections exist)
+            if (fixedDevice == null && distinctDevices.size > 1) {
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -267,7 +248,6 @@ fun ActionLogContent(
                     items(LogFilterType.entries) { filter ->
                         val count = when (filter) {
                             LogFilterType.ALL -> actionLog.size
-                            LogFilterType.ACTIVE -> activeCount
                             LogFilterType.RESTORED -> restoredCount
                         }
                         FilterChip(

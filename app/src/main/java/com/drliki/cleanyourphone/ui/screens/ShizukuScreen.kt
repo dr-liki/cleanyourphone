@@ -23,6 +23,7 @@ import com.drliki.cleanyourphone.model.RemovalTier
 import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.BadgePill
 import com.drliki.cleanyourphone.ui.components.PackageManagementContent
+import com.drliki.cleanyourphone.ui.components.TopHeaderSearchBar
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 import com.drliki.cleanyourphone.viewmodel.ShizukuViewModel
 
@@ -74,23 +75,14 @@ fun ShizukuScreen(
             TopAppBar(
                 title = {
                     if (isSearchActive) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.searchQuery.value = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            placeholder = { Text("Search apps by name or ID…") },
-                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
-                                        Icon(Icons.Default.Clear, "Clear")
-                                    }
-                                }
+                        TopHeaderSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { viewModel.searchQuery.value = it },
+                            onCloseSearch = {
+                                viewModel.isSearchActive.value = false
+                                viewModel.searchQuery.value = ""
                             },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
+                            placeholder = "Search apps by name or ID…"
                         )
                     } else {
                         Column {
@@ -123,44 +115,32 @@ fun ShizukuScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (isSearchActive) {
-                            viewModel.isSearchActive.value = false
-                            viewModel.searchQuery.value = ""
-                        } else {
-                            onNavigateBack()
+                    if (!isSearchActive) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
-                            contentDescription = if (isSearchActive) "Close search" else "Back"
-                        )
                     }
                 },
                 actions = {
-                    // Search Button beside menu
-                    IconButton(onClick = {
-                        val willBeActive = !isSearchActive
-                        viewModel.isSearchActive.value = willBeActive
-                        if (!willBeActive) viewModel.searchQuery.value = ""
-                        if (willBeActive && selectedNavTab == 0) {
-                            selectedNavTab = 1 // Switch to Packages when starting search
+                    if (!isSearchActive) {
+                        // Search Button beside menu
+                        IconButton(onClick = {
+                            viewModel.isSearchActive.value = true
+                            if (selectedNavTab == 0) {
+                                selectedNavTab = 1 // Switch to Packages when starting search
+                            }
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
 
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
                             DropdownMenuItem(
                                 text = { Text("Update Debloat Lists") },
                                 onClick = {
@@ -352,7 +332,7 @@ private fun ShizukuStatusContent(
     tailoredCount: Int,
     onRefreshStatus: () -> Unit,
     onRequestPermission: () -> Unit,
-    onGoToPackages: () -> Unit
+    onGoToPackages: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -611,7 +591,7 @@ private fun ShizukuStatusContent(
                             Icon(Icons.Default.Star, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                "$tailoredCount package(s) specifically tailored for ${deviceInfo.brand}.",
+                                "$tailoredCount brand specific package(s) for ${deviceInfo.brand}.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFFB45309),
                                 fontWeight = FontWeight.SemiBold
@@ -620,19 +600,6 @@ private fun ShizukuStatusContent(
                     }
                 }
             }
-        }
-
-        // Action: Jump to Packages
-        Button(
-            onClick = onGoToPackages,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Text("View & Manage Packages", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.ArrowForward, contentDescription = null, Modifier.size(18.dp))
         }
 
         Spacer(Modifier.height(16.dp))
