@@ -8,8 +8,10 @@ import com.drliki.cleanyourphone.data.UadRepository
 import com.drliki.cleanyourphone.engine.AdbEngine
 import com.drliki.cleanyourphone.engine.DiscoveredPairingService
 import com.drliki.cleanyourphone.model.ActionLogEntry
+import com.drliki.cleanyourphone.model.CategorizedPackages
 import com.drliki.cleanyourphone.model.DevicePackage
 import com.drliki.cleanyourphone.model.DiscoveredDevice
+import com.drliki.cleanyourphone.model.RemoteDeviceInfo
 import com.drliki.cleanyourphone.model.SavedDeviceProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,9 +48,15 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private val _isAndroidTv = MutableStateFlow(false)
     val isAndroidTv = _isAndroidTv.asStateFlow()
 
+    private val _deviceInfo = MutableStateFlow<RemoteDeviceInfo?>(null)
+    val deviceInfo = _deviceInfo.asStateFlow()
+
     // ── Package state ────────────────────────────────────────────────────────
     private val _packages = MutableStateFlow<List<DevicePackage>>(emptyList())
     val packages = _packages.asStateFlow()
+
+    private val _categorizedPackages = MutableStateFlow<CategorizedPackages?>(null)
+    val categorizedPackages = _categorizedPackages.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -73,6 +81,11 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
         refreshSavedProfiles()
         startContinuousDiscovery()
         generateNewPairingCredentials()
+        loadActionLog()
+    }
+
+    fun loadActionLog() {
+        _actionLog.value = settings.getActionHistory().filter { it.mode == "WIRELESS" }
     }
 
     fun refreshSavedProfiles() {
@@ -125,10 +138,12 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             engine.connect(device)
                 .onSuccess { msg ->
                     _isConnected.value = true
-                    val isTv = engine.detectIsAndroidTv()
+                    val info = engine.getRemoteDeviceInfo()
+                    _deviceInfo.value = info
+                    val isTv = info.isTv || engine.detectIsAndroidTv()
                     _isAndroidTv.value = isTv
 
-                    val rawName = engine.connectedDevice?.name ?: device.name
+                    val rawName = if (info.model.isNotBlank()) info.model else (engine.connectedDevice?.name ?: device.name)
                     val deviceName = if (isTv && !rawName.contains("TV", ignoreCase = true)) "$rawName (Android TV)" else rawName
                     _connectedName.value = deviceName
                     _snackbar.value = if (isTv) "$msg — Android/Google TV detected! CleanYourTV debloat list active." else msg
@@ -180,10 +195,12 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 engine.connect(DiscoveredDevice(host, targetPort, "Remote Phone ($host)", "Android Phone"))
                     .onSuccess {
                         _isConnected.value = true
-                        val isTv = engine.detectIsAndroidTv()
+                        val info = engine.getRemoteDeviceInfo()
+                        _deviceInfo.value = info
+                        val isTv = info.isTv || engine.detectIsAndroidTv()
                         _isAndroidTv.value = isTv
 
-                        val rawName = engine.connectedDevice?.name ?: "Remote Device"
+                        val rawName = if (info.model.isNotBlank()) info.model else (engine.connectedDevice?.name ?: "Remote Device")
                         val deviceName = if (isTv && !rawName.contains("TV", ignoreCase = true)) "$rawName (Android TV)" else rawName
                         _connectedName.value = deviceName
                         _snackbar.value = if (isTv) "Connected to $deviceName ($host:$targetPort)! CleanYourTV debloat list active." else "Connected to $deviceName ($host:$targetPort)!"
@@ -213,6 +230,8 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun disconnect() {
         engine.disconnect()
         _isConnected.value = false
+        _deviceInfo.value = null
+        _categorizedPackages.value = null
         _connectedName.value = ""
         _isAndroidTv.value = false
         _packages.value = emptyList()
@@ -222,15 +241,16 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private fun loadRemotePackages() {
         viewModelScope.launch {
             _isLoading.value = true
-            engine.listPackages()
-                .onSuccess { pkgs ->
+            engine.listCategorizedPackages()
+                .onSuccess { catPkgs ->
+                    _categorizedPackages.value = catPkgs
                     val isTv = _isAndroidTv.value
-                    val resolved = repo.resolveRemotePackages(pkgs, isTv = isTv)
+                    val resolved = repo.resolveRemotePackages(catPkgs, isTv = isTv)
                     _packages.value = resolved
 
                     // Update total count in saved profile
                     engine.connectedDevice?.let { dev ->
-                        settings.recordDisabledPackages(dev.host, dev.port, emptyList(), pkgs.size)
+                        settings.recordDisabledPackages(dev.host, dev.port, emptyList(), catPkgs.allPackages.size)
                         refreshSavedProfiles()
                     }
                 }
@@ -301,30 +321,36 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
             }
             var ok = 0
             val disabledNames = mutableListOf<String>()
+            val newEntries = mutableListOf<ActionLogEntry>()
+            val devName = _connectedName.value.ifBlank { "Remote Device" }
             targets.forEach { pkg ->
                 engine.disablePackage(pkg.packageName).onSuccess {
                     ok++
                     disabledNames.add(pkg.packageName)
-                    _actionLog.value = listOf(
-                        ActionLogEntry(
-                            packageName = pkg.packageName,
-                            appLabel = pkg.appLabel,
-                            action = "pm disable-user --user 0 ${pkg.packageName}",
-                            undoCommand = "pm enable --user 0 ${pkg.packageName}",
-                            deviceName = _connectedName.value
-                        )
-                    ) + _actionLog.value
+                    val entry = ActionLogEntry(
+                        packageName = pkg.packageName,
+                        appLabel = pkg.appLabel,
+                        action = "pm disable-user --user 0 ${pkg.packageName}",
+                        undoCommand = "pm enable --user 0 ${pkg.packageName}",
+                        deviceName = devName,
+                        mode = "WIRELESS"
+                    )
+                    newEntries.add(entry)
                     _packages.value = _packages.value.map {
                         if (it.packageName == pkg.packageName) it.copy(isEnabled = false) else it
                     }
                 }
+            }
+            if (newEntries.isNotEmpty()) {
+                settings.recordActions(newEntries)
+                _actionLog.value = newEntries + _actionLog.value
             }
             // Update remembered device profile disabled packages
             engine.connectedDevice?.let { dev ->
                 settings.recordDisabledPackages(dev.host, dev.port, disabledNames, _packages.value.size)
                 refreshSavedProfiles()
             }
-            _snackbar.value = "Disabled $ok package(s) on ${_connectedName.value}"
+            _snackbar.value = "Disabled $ok package(s) on $devName"
         }
     }
 
@@ -342,13 +368,17 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun undoAction(entry: ActionLogEntry) {
         viewModelScope.launch {
             engine.enablePackage(entry.packageName).onSuccess {
+                val updated = entry.copy(isUndone = true)
+                settings.updateAction(updated)
                 _actionLog.value = _actionLog.value.map {
-                    if (it.id == entry.id) it.copy(isUndone = true) else it
+                    if (it.id == entry.id) updated else it
                 }
                 _packages.value = _packages.value.map {
                     if (it.packageName == entry.packageName) it.copy(isEnabled = true) else it
                 }
                 _snackbar.value = "Undone: ${entry.appLabel}"
+            }.onFailure {
+                _snackbar.value = "Failed to undo: ${it.message}"
             }
         }
     }

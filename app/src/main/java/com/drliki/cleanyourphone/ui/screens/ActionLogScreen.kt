@@ -126,7 +126,12 @@ fun ActionLogContent(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(LogFilterType.ALL) }
+    var selectedDevice by remember { mutableStateOf<String?>(null) }
     var selectedEntries by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val distinctDevices = remember(actionLog) {
+        actionLog.map { it.deviceName }.filter { it.isNotBlank() }.distinct()
+    }
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -137,20 +142,21 @@ fun ActionLogContent(
     val activeCount = actionLog.count { !it.isUndone }
     val restoredCount = actionLog.count { it.isUndone }
 
-    val filteredLog = remember(actionLog, searchQuery, selectedFilter) {
+    val filteredLog = remember(actionLog, searchQuery, selectedFilter, selectedDevice) {
         actionLog.filter { entry ->
             val matchesFilter = when (selectedFilter) {
                 LogFilterType.ALL -> true
                 LogFilterType.ACTIVE -> !entry.isUndone
                 LogFilterType.RESTORED -> entry.isUndone
             }
+            val matchesDevice = selectedDevice == null || entry.deviceName == selectedDevice
             val matchesSearch = searchQuery.isBlank() ||
                 entry.appLabel.contains(searchQuery, true) ||
                 entry.packageName.contains(searchQuery, true) ||
                 entry.deviceName.contains(searchQuery, true) ||
                 entry.action.contains(searchQuery, true)
 
-            matchesFilter && matchesSearch
+            matchesFilter && matchesDevice && matchesSearch
         }
     }
 
@@ -182,7 +188,41 @@ fun ActionLogContent(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // Filter Chips & Select All Controls
+            // Device Filter Chips (shown when actions from multiple device connections exist)
+            if (distinctDevices.size > 1) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedDevice == null,
+                            onClick = { selectedDevice = null },
+                            label = { Text("All Devices (${actionLog.size})") },
+                            leadingIcon = { Icon(Icons.Default.Devices, null, Modifier.size(16.dp)) }
+                        )
+                    }
+                    items(distinctDevices) { dev ->
+                        val devCount = actionLog.count { it.deviceName == dev }
+                        FilterChip(
+                            selected = selectedDevice == dev,
+                            onClick = { selectedDevice = dev },
+                            label = { Text("$dev ($devCount)") },
+                            leadingIcon = {
+                                Icon(
+                                    if (dev.contains("TV", ignoreCase = true)) Icons.Default.Tv else Icons.Default.PhoneAndroid,
+                                    null,
+                                    Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Status Filter Chips & Select All Controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -218,6 +258,15 @@ fun ActionLogContent(
                                 activeFiltered.map { it.id }.toSet()
                             }
                         },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            if (allFilteredSelected) "Deselect All" else "Select All",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
@@ -420,12 +469,28 @@ private fun ActionLogItemCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    "${entry.timestamp} · ${entry.deviceName}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        entry.timestamp,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    BadgePill(
+                        label = entry.deviceName,
+                        color = if (entry.deviceName.contains("Local", ignoreCase = true) || entry.mode == "SHIZUKU")
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSecondaryContainer,
+                        bgColor = if (entry.deviceName.contains("Local", ignoreCase = true) || entry.mode == "SHIZUKU")
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                        else
+                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
                 Text(
                     entry.action,
                     style = MaterialTheme.typography.labelSmall,

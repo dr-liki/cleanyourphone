@@ -97,12 +97,6 @@ fun ShizukuScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        viewModel.refreshStatus()
-                        viewModel.loadPackages()
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")

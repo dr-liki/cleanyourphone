@@ -2,16 +2,25 @@ package com.drliki.cleanyourphone.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.drliki.cleanyourphone.model.ActionLogEntry
+import com.drliki.cleanyourphone.model.AppBackupData
 import com.drliki.cleanyourphone.model.SavedDeviceProfile
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AppSettings(context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cyp_settings", Context.MODE_PRIVATE)
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+        encodeDefaults = true
+    }
 
     companion object {
         const val DEFAULT_UAD_REPO_URL =
@@ -25,6 +34,7 @@ class AppSettings(context: Context) {
         private const val KEY_LAST_UPDATE_TIME = "last_update_time"
         private const val KEY_LAST_TV_UPDATE_TIME = "last_tv_update_time"
         private const val KEY_SAVED_PROFILES = "saved_device_profiles"
+        private const val KEY_ACTION_HISTORY = "action_history"
     }
 
     var uadRepoUrl: String
@@ -111,5 +121,105 @@ class AppSettings(context: Context) {
             )
             prefs.edit().putString(KEY_SAVED_PROFILES, json.encodeToString(current)).apply()
         }
+    }
+
+    // ── Persistent Action History ────────────────────────────────────────────
+    fun getActionHistory(): List<ActionLogEntry> {
+        val raw = prefs.getString(KEY_ACTION_HISTORY, null) ?: return emptyList()
+        return runCatching {
+            json.decodeFromString<List<ActionLogEntry>>(raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun recordAction(entry: ActionLogEntry) {
+        val current = getActionHistory().toMutableList()
+        current.add(0, entry)
+        val trimmed = if (current.size > 500) current.take(500) else current
+        prefs.edit().putString(KEY_ACTION_HISTORY, json.encodeToString(trimmed)).apply()
+    }
+
+    fun recordActions(entries: List<ActionLogEntry>) {
+        if (entries.isEmpty()) return
+        val current = getActionHistory().toMutableList()
+        current.addAll(0, entries)
+        val trimmed = if (current.size > 500) current.take(500) else current
+        prefs.edit().putString(KEY_ACTION_HISTORY, json.encodeToString(trimmed)).apply()
+    }
+
+    fun updateAction(entry: ActionLogEntry) {
+        val current = getActionHistory().toMutableList()
+        val index = current.indexOfFirst { it.id == entry.id }
+        if (index >= 0) {
+            current[index] = entry
+            prefs.edit().putString(KEY_ACTION_HISTORY, json.encodeToString(current)).apply()
+        }
+    }
+
+    fun updateActions(updated: List<ActionLogEntry>) {
+        if (updated.isEmpty()) return
+        val current = getActionHistory().toMutableList()
+        val map = updated.associateBy { it.id }
+        for (i in current.indices) {
+            map[current[i].id]?.let { current[i] = it }
+        }
+        prefs.edit().putString(KEY_ACTION_HISTORY, json.encodeToString(current)).apply()
+    }
+
+    fun clearActionHistory() {
+        prefs.edit().remove(KEY_ACTION_HISTORY).apply()
+    }
+
+    // ── Comprehensive Backup & Restore ───────────────────────────────────────
+    fun createBackup(): AppBackupData {
+        return AppBackupData(
+            version = "2.8.0",
+            timestamp = System.currentTimeMillis(),
+            exportedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()),
+            savedProfiles = getSavedProfiles(),
+            actionHistory = getActionHistory(),
+            uadRepoUrl = uadRepoUrl,
+            tvRepoUrl = tvRepoUrl,
+            autoUpdateOnLaunch = autoUpdateOnLaunch,
+            autoUpdateTvOnLaunch = autoUpdateTvOnLaunch
+        )
+    }
+
+    fun exportBackupJson(): String = json.encodeToString(createBackup())
+
+    fun restoreBackup(backup: AppBackupData): Result<String> = runCatching {
+        // Restore saved device profiles (merging without duplicates)
+        if (backup.savedProfiles.isNotEmpty()) {
+            val existing = getSavedProfiles()
+            val existingIds = existing.map { it.id }.toSet()
+            val newProfiles = backup.savedProfiles.filter { it.id !in existingIds }
+            val merged = existing + newProfiles
+            prefs.edit().putString(KEY_SAVED_PROFILES, json.encodeToString(merged)).apply()
+        }
+
+        // Restore action log history (merging without duplicates)
+        if (backup.actionHistory.isNotEmpty()) {
+            val existingHistory = getActionHistory()
+            val existingIds = existingHistory.map { it.id }.toSet()
+            val newHistory = backup.actionHistory.filter { it.id !in existingIds }
+            val mergedHistory = (newHistory + existingHistory).take(500)
+            prefs.edit().putString(KEY_ACTION_HISTORY, json.encodeToString(mergedHistory)).apply()
+        }
+
+        // Restore repository URLs if provided
+        if (backup.uadRepoUrl.isNotBlank()) {
+            uadRepoUrl = backup.uadRepoUrl
+        }
+        if (backup.tvRepoUrl.isNotBlank()) {
+            tvRepoUrl = backup.tvRepoUrl
+        }
+        autoUpdateOnLaunch = backup.autoUpdateOnLaunch
+        autoUpdateTvOnLaunch = backup.autoUpdateTvOnLaunch
+
+        "Restored ${backup.savedProfiles.size} profile(s) and ${backup.actionHistory.size} action log record(s) successfully!"
+    }
+
+    fun restoreBackupFromJson(rawJson: String): Result<String> = runCatching {
+        val parsed = json.decodeFromString<AppBackupData>(rawJson.trim())
+        restoreBackup(parsed).getOrThrow()
     }
 }

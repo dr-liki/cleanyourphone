@@ -63,9 +63,9 @@ fun CleanYourPhoneAppRoot(
     val shizukuLog by shizukuVm.actionLog.collectAsState()
     val wirelessLog by wirelessVm.actionLog.collectAsState()
 
-    // Combined action log preserving timeline order
-    val combinedActionLog = remember(shizukuLog, wirelessLog) {
-        (shizukuLog + wirelessLog).sortedByDescending { it.timestamp }
+    // Persistent all-activities history across entire app
+    val allHistory = remember(currentScreen, shizukuLog, wirelessLog) {
+        shizukuVm.settings.getActionHistory()
     }
 
     BackHandler(enabled = currentScreen != AppScreen.MODE_SELECT) {
@@ -122,15 +122,21 @@ fun CleanYourPhoneAppRoot(
             }
             AppScreen.ACTION_LOG -> {
                 val (logToDisplay, logTitle) = when (previousScreen) {
-                    AppScreen.SHIZUKU -> Pair(shizukuLog, "Shizuku Action Log")
-                    AppScreen.WIRELESS -> Pair(wirelessLog, "Wireless ADB Action Log")
-                    else -> Pair(combinedActionLog, "All Activities Log")
+                    AppScreen.SHIZUKU -> Pair(
+                        allHistory.filter { it.mode == "SHIZUKU" || it.deviceName.contains("Local", ignoreCase = true) },
+                        "Shizuku Action Log"
+                    )
+                    AppScreen.WIRELESS -> Pair(
+                        allHistory.filter { it.mode == "WIRELESS" },
+                        "Wireless ADB Action Log"
+                    )
+                    else -> Pair(allHistory, "All Activities Log")
                 }
                 ActionLogScreen(
                     actionLog = logToDisplay,
                     sourceTitle = logTitle,
                     onUndoAction = { entry ->
-                        if (entry.deviceName == "Local Device" || shizukuLog.any { it.id == entry.id }) {
+                        if (entry.mode == "SHIZUKU" || entry.deviceName.contains("Local", ignoreCase = true)) {
                             shizukuVm.undoAction(entry)
                         } else {
                             wirelessVm.undoAction(entry)
@@ -138,7 +144,7 @@ fun CleanYourPhoneAppRoot(
                     },
                     onUndoMultipleActions = { entries ->
                         entries.forEach { entry ->
-                            if (entry.deviceName == "Local Device" || shizukuLog.any { it.id == entry.id }) {
+                            if (entry.mode == "SHIZUKU" || entry.deviceName.contains("Local", ignoreCase = true)) {
                                 shizukuVm.undoAction(entry)
                             } else {
                                 wirelessVm.undoAction(entry)

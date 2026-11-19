@@ -69,7 +69,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.7.0 · Material 3",
+                        "v2.8.0 · Material 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -97,34 +97,34 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AboutFeatureRow(
+                        icon = Icons.Default.Backup,
+                        title = "Comprehensive Backup & Restore",
+                        subtitle = "Export and restore debloat states, custom URLs, device profiles, and action history via JSON or clipboard."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.PermDeviceInformation,
+                        title = "Deep Device Specs & Analytics",
+                        subtitle = "Inspects Android OS, API level, security patch, screen resolution/density, and CPU architecture."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.Category,
+                        title = "Package Categorization over ADB",
+                        subtitle = "Categorizes remote packages into System, User 3rd-party, and Disabled apps with accurate filtering."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.History,
+                        title = "Persistent Cross-Device Action Log",
+                        subtitle = "Retains activities even after disconnection, with interactive device connection filtering."
+                    )
+                    AboutFeatureRow(
                         icon = Icons.Default.Tv,
                         title = "Android & Google TV Support",
                         subtitle = "Auto-detects TVs and uses CleanYourTV debloat catalog (492+ models)."
                     )
                     AboutFeatureRow(
-                        icon = Icons.Default.Navigation,
-                        title = "Material 3 Bottom Navigation",
-                        subtitle = "Dedicated tabs for Status/Device, Packages, and Action Log."
-                    )
-                    AboutFeatureRow(
                         icon = Icons.Default.Shield,
-                        title = "100% Reversible",
-                        subtitle = "Uses 'pm disable-user --user 0'. Zero data loss."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Devices,
-                        title = "Remembered Device Profiles",
-                        subtitle = "Saves connected phones & TVs with modification history."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.WifiTethering,
-                        title = "Wireless Discovery & Pairing",
-                        subtitle = "Auto-discovers target devices & pairing services via mDNS."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.CloudDownload,
-                        title = "Customizable Bloat Repositories",
-                        subtitle = "UAD-ng and CleanYourTV catalogs with manual and auto-updates."
+                        title = "100% Reversible Non-Destructive",
+                        subtitle = "Uses 'pm disable-user --user 0'. Zero data loss and instant one-tap undo."
                     )
                 }
 

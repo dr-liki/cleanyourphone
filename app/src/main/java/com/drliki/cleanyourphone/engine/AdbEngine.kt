@@ -3,7 +3,9 @@ package com.drliki.cleanyourphone.engine
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import com.drliki.cleanyourphone.model.CategorizedPackages
 import com.drliki.cleanyourphone.model.DiscoveredDevice
+import com.drliki.cleanyourphone.model.RemoteDeviceInfo
 import dadb.AdbKeyPair
 import dadb.Dadb
 import io.github.rhythmcache.adb.AdbClient
@@ -242,6 +244,102 @@ class AdbEngine(private val context: Context) {
                 .map { it.removePrefix("package:").trim() }
                 .filter { it.isNotBlank() }
         }
+    }
+
+    suspend fun listCategorizedPackages(): Result<CategorizedPackages> = withContext(Dispatchers.IO) {
+        runCatching {
+            // 1. All packages
+            val allOut = shell("pm list packages").getOrDefault("")
+            val allList = allOut.lines()
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            // 2. System packages (-s)
+            val sysOut = shell("pm list packages -s").getOrDefault("")
+            val sysSet = sysOut.lines()
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+
+            // 3. User / 3rd-party packages (-3)
+            val userOut = shell("pm list packages -3").getOrDefault("")
+            val userSet = userOut.lines()
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+
+            // 4. Disabled packages (-d)
+            val disOut = shell("pm list packages -d").getOrDefault("")
+            val disSet = disOut.lines()
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+
+            val finalAll = if (allList.isNotEmpty()) allList else (sysSet + userSet + disSet).toList().distinct()
+
+            CategorizedPackages(
+                allPackages = finalAll,
+                systemPackages = sysSet,
+                userPackages = userSet,
+                disabledPackages = disSet
+            )
+        }
+    }
+
+    /**
+     * Queries detailed system properties, display metrics, and hardware specs from the connected device.
+     */
+    suspend fun getRemoteDeviceInfo(): RemoteDeviceInfo = withContext(Dispatchers.IO) {
+        val dev = connectedDevice
+        val host = dev?.host ?: ""
+        val port = dev?.port ?: 0
+
+        // Read getprop output
+        val getpropOut = shell("getprop").getOrDefault("")
+        fun extractProp(key: String): String {
+            val pattern = Regex("\\[$key\\]:\\s*\\[([^\\]]*)\\]")
+            return pattern.find(getpropOut)?.groupValues?.getOrNull(1)?.trim() ?: ""
+        }
+
+        val manufacturer = extractProp("ro.product.manufacturer").ifBlank { "Unknown" }
+        val brand = extractProp("ro.product.brand").ifBlank { manufacturer }
+        val model = extractProp("ro.product.model").ifBlank { dev?.name ?: "Android Device" }
+        val deviceCodename = extractProp("ro.product.device").ifBlank { extractProp("ro.product.name") }
+        val androidVersion = extractProp("ro.build.version.release").ifBlank { "Unknown" }
+        val sdkVersion = extractProp("ro.build.version.sdk")
+        val securityPatch = extractProp("ro.build.version.security_patch")
+        val cpuAbi = extractProp("ro.product.cpu.abi")
+
+        val wmSizeOut = shell("wm size").getOrDefault("")
+        val resolution = wmSizeOut.substringAfter("size:").trim().lines().firstOrNull()?.trim() ?: ""
+
+        val density = extractProp("ro.sf.lcd_density").ifBlank {
+            val wmDensityOut = shell("wm density").getOrDefault("")
+            wmDensityOut.substringAfter("density:").trim().lines().firstOrNull()?.trim() ?: ""
+        }
+
+        val isTv = detectIsAndroidTv()
+
+        RemoteDeviceInfo(
+            manufacturer = manufacturer,
+            brand = brand,
+            model = model,
+            deviceName = deviceCodename,
+            androidVersion = androidVersion,
+            sdkVersion = sdkVersion,
+            securityPatch = securityPatch,
+            cpuAbi = cpuAbi,
+            displayResolution = resolution,
+            displayDensity = density,
+            isTv = isTv,
+            host = host,
+            port = port
+        )
     }
 
     suspend fun disablePackage(pkg: String): Result<String> =

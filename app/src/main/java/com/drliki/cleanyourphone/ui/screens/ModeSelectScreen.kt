@@ -17,11 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.R
+import com.drliki.cleanyourphone.data.AppSettings
 import com.drliki.cleanyourphone.engine.ShizukuStatus
+import com.drliki.cleanyourphone.ui.components.BackupRestoreDialog
 import com.drliki.cleanyourphone.ui.theme.TierRecommended
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +37,10 @@ fun ModeSelectScreen(
     onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val settings = remember { AppSettings(context) }
     var showMenu by remember { mutableStateOf(false) }
+    var showBackupRestoreDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -69,13 +75,13 @@ fun ModeSelectScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Action Log") },
+                                text = { Text("Backup & Restore") },
                                 onClick = {
                                     showMenu = false
-                                    onOpenActionLog()
+                                    showBackupRestoreDialog = true
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.Default.History, contentDescription = null)
+                                    Icon(Icons.Default.Backup, contentDescription = null)
                                 }
                             )
                             DropdownMenuItem(
@@ -112,7 +118,7 @@ fun ModeSelectScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Choose how you want to manage bloatware. Clean this device directly or connect wirelessly to another Android phone.",
+                "Choose how you want to manage bloatware. Clean this device directly or connect wirelessly to another Android phone/TV.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -134,13 +140,13 @@ fun ModeSelectScreen(
                 onClick = onSelectShizuku
             )
 
-            // Mode 2: Wireless Debugging (Other Phone)
+            // Mode 2: Wireless Debugging (Other Phone/TV)
             ModeCard(
                 icon = Icons.Default.WifiTethering,
-                title = "Other Phone",
+                title = "Other Phone/TV",
                 badge = "Wireless ADB",
-                subtitle = "Remote cross-phone debloating",
-                description = "Scan your local Wi-Fi network, discover dynamic Wireless Debugging ports automatically via mDNS, pair with QR/PIN, and disable packages remotely.",
+                subtitle = "Remote cross-device debloating",
+                description = "Scan your local Wi-Fi network, discover dynamic Wireless Debugging ports automatically via mDNS, pair with QR/PIN, and disable packages remotely on any Android phone or TV.",
                 statusText = "mDNS Dynamic Port Scanner Ready",
                 statusColor = MaterialTheme.colorScheme.primary,
                 buttonText = "Open Wireless Debloater",
@@ -184,6 +190,13 @@ fun ModeSelectScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showBackupRestoreDialog) {
+        BackupRestoreDialog(
+            settings = settings,
+            onDismiss = { showBackupRestoreDialog = false }
+        )
     }
 }
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.7.0
+# 📱 CleanYourPhone v2.8.0
 
 **Debloat Android phones & Android/Google TVs — directly on this device via Shizuku, or wirelessly connect to other phones and TVs over Wi-Fi.**
 
@@ -8,6 +8,7 @@
 [![Privilege](https://img.shields.io/badge/Modes-Shizuku%20%7C%20Wireless%20ADB-10B981?style=flat-square)](#operation-modes)
 [![Databases](https://img.shields.io/badge/Databases-UAD--ng%20%26%20CleanYourTV-818CF8?style=flat-square)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
 [![Pairing](https://img.shields.io/badge/Wireless%20Pairing-SPAKE2%20%26%20TLS%201.3-10B981?style=flat-square)](#wireless-pairing)
+[![Backup](https://img.shields.io/badge/Backup%20%26%20Restore-JSON%20Snapshot-8B5CF6?style=flat-square)](#backup--restore)
 [![Design](https://img.shields.io/badge/UI-Material%20Design%203-F59E0B?style=flat-square)](#user-interface)
 [![License](https://img.shields.io/badge/License-Apache--2.0-64748B?style=flat-square)](LICENSE)
 
@@ -16,6 +17,33 @@
 ---
 
 **CleanYourPhone** is a modern, open-source Android debloater built from the ground up with **Material Design 3**. It offers a dual-engine architecture that lets you optimize your current device or connect wirelessly across your local network to debloat other phones and Android/Google TVs.
+
+---
+
+## 🌟 What's New in v2.8.0
+
+- **💾 Comprehensive Backup & Restore**:
+  - Full snapshot backup of remembered device profiles, action log history, and custom repository configurations.
+  - One-tap **Copy JSON to Clipboard** and native Android share sheet for exporting or saving backup files.
+  - Safe import and restore with schema validation, non-destructive profile & log merging, and instant state refresh.
+- **📱 Deep Device Specifications & Analysis**:
+  - Tab 1 (**Device**) displays detailed hardware and OS specs for connected remote devices: Manufacturer, Brand, Model, Device Codename, Android Version, API Level, Security Patch level, Screen Resolution, Display Density (dpi), and CPU ABI architecture.
+- **📊 Precise Remote Package Categorization**:
+  - Direct ADB package queries using Android package manager flags (`pm list packages -s`, `pm list packages -3`, `pm list packages -d`).
+  - Enables 100% accurate filtering by **All Apps**, **System Apps**, **User Apps**, and **Disabled Apps** on remote phones and Android/Google TVs.
+  - Real-time statistics breakdown displaying counts for Total, System, User, Disabled, and Recommended debloat packages.
+- **📜 Persistent Cross-Device Action Log**:
+  - Main **All Activities Log** now stores all actions persistently in internal storage, preserving history even after disconnection and app restarts.
+  - Interactive **Device Filter Chips** allow isolating actions per connected phone, TV, or local Shizuku session with a single tap.
+  - Prominent device connection badges on each action log entry card.
+- **🧭 Streamlined Wireless Debloater UX**:
+  - 3-tab Bottom Navigation Bar appears **only after device connection is established**.
+  - Clean disconnected view with 2 intuitive top tabs: **Saved Profiles** and **Scan Network**.
+  - Redundant separate manual connect page removed (fully integrated inside the multi-mode Pair & Connect dialog).
+  - Saved device profile card **Connect Device** button repositioned ergonomically below the metadata line, eliminating text overflow.
+  - Top bar refresh buttons removed in both Shizuku and Wireless ADB modes for a clean, minimalist header.
+  - Top bar and menu Pair Device shortcuts removed in favor of contextual action buttons.
+  - Wireless ADB description updated to **Other Phone/TV** across the app.
 
 ---
 

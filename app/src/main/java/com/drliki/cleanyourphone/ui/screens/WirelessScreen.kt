@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.model.DiscoveredDevice
 import com.drliki.cleanyourphone.model.RemovalTier
+import com.drliki.cleanyourphone.model.RemoteDeviceInfo
 import com.drliki.cleanyourphone.model.SavedDeviceProfile
 import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.BadgePill
@@ -47,6 +48,7 @@ fun WirelessScreen(
     val isConnected by viewModel.isConnected.collectAsState()
     val isAndroidTv by viewModel.isAndroidTv.collectAsState()
     val connectedName by viewModel.connectedName.collectAsState()
+    val deviceInfo by viewModel.deviceInfo.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val savedProfiles by viewModel.savedProfiles.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -66,12 +68,6 @@ fun WirelessScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var pendingDisablePackages by remember { mutableStateOf<Set<String>?>(null) }
-
-    // Manual connection inputs
-    var manualIp by remember { mutableStateOf("") }
-    var manualPort by remember { mutableStateOf("5555") }
-    var manualPairingPort by remember { mutableStateOf("") }
-    var manualPairingCode by remember { mutableStateOf("") }
 
     // Dynamic scan port input
     var portInput by remember { mutableStateOf(customScanPort.toString()) }
@@ -127,17 +123,6 @@ fun WirelessScreen(
                     }
                 },
                 actions = {
-                    if (isConnected && selectedNavTab == 1) {
-                        IconButton(onClick = { viewModel.updateUadLists() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
-                    }
-                    if (!isConnected) {
-                        IconButton(onClick = { showPairingDialog = true }) {
-                            Icon(Icons.Default.QrCode2, contentDescription = "Pair Device")
-                        }
-                    }
-
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -154,16 +139,6 @@ fun WirelessScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) }
                             )
-                            if (!isConnected) {
-                                DropdownMenuItem(
-                                    text = { Text("Pair Device (QR/PIN)") },
-                                    onClick = {
-                                        showMenu = false
-                                        showPairingDialog = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null) }
-                                )
-                            }
                             DropdownMenuItem(
                                 text = { Text("Settings") },
                                 onClick = {
@@ -189,43 +164,45 @@ fun WirelessScreen(
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedNavTab == 0,
-                    onClick = { selectedNavTab = 0 },
-                    icon = {
-                        Icon(
-                            if (isConnected && isAndroidTv) Icons.Default.Tv else Icons.Default.Phonelink,
-                            contentDescription = null
-                        )
-                    },
-                    label = { Text("Device") }
-                )
-                NavigationBarItem(
-                    selected = selectedNavTab == 1,
-                    onClick = { selectedNavTab = 1 },
-                    icon = { Icon(Icons.Default.Apps, contentDescription = null) },
-                    label = { Text("Packages") }
-                )
-                NavigationBarItem(
-                    selected = selectedNavTab == 2,
-                    onClick = { selectedNavTab = 2 },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (activeUndoCount > 0) {
-                                    Badge { Text("$activeUndoCount") }
+            if (isConnected) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedNavTab == 0,
+                        onClick = { selectedNavTab = 0 },
+                        icon = {
+                            Icon(
+                                if (isAndroidTv) Icons.Default.Tv else Icons.Default.Phonelink,
+                                contentDescription = null
+                            )
+                        },
+                        label = { Text("Device") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavTab == 1,
+                        onClick = { selectedNavTab = 1 },
+                        icon = { Icon(Icons.Default.Apps, contentDescription = null) },
+                        label = { Text("Packages") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavTab == 2,
+                        onClick = { selectedNavTab = 2 },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (activeUndoCount > 0) {
+                                        Badge { Text("$activeUndoCount") }
+                                    }
                                 }
+                            ) {
+                                Icon(Icons.Default.History, contentDescription = null)
                             }
-                        ) {
-                            Icon(Icons.Default.History, contentDescription = null)
-                        }
-                    },
-                    label = { Text("Action Log") }
-                )
+                        },
+                        label = { Text("Action Log") }
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -241,7 +218,10 @@ fun WirelessScreen(
                         ConnectedDeviceInfoContent(
                             connectedName = connectedName,
                             isAndroidTv = isAndroidTv,
+                            deviceInfo = deviceInfo,
                             packagesCount = packages.size,
+                            systemCount = packages.count { it.isSystemApp },
+                            userCount = packages.count { !it.isSystemApp },
                             disabledCount = packages.count { !it.isEnabled },
                             recommendedCount = packages.count { it.isEnabled && it.tier == RemovalTier.RECOMMENDED },
                             tvCatalogSize = viewModel.repo.getTvCatalogSize(),
@@ -252,7 +232,7 @@ fun WirelessScreen(
                             onManagePackages = { selectedNavTab = 1 }
                         )
                     } else {
-                        // Disconnected: Show Sub-tabs (Saved Profiles, Scan Network, Manual Connect)
+                        // Disconnected: Show Sub-tabs (Saved Profiles & Scan Network)
                         Column(modifier = Modifier.fillMaxSize()) {
                             TabRow(
                                 selectedTabIndex = connectionSubTab,
@@ -269,12 +249,6 @@ fun WirelessScreen(
                                     onClick = { connectionSubTab = 1 },
                                     text = { Text("Scan Network") },
                                     icon = { Icon(Icons.Default.WifiFind, contentDescription = null, Modifier.size(18.dp)) }
-                                )
-                                Tab(
-                                    selected = connectionSubTab == 2,
-                                    onClick = { connectionSubTab = 2 },
-                                    text = { Text("Manual Connect") },
-                                    icon = { Icon(Icons.Default.SettingsEthernet, contentDescription = null, Modifier.size(18.dp)) }
                                 )
                             }
 
@@ -480,141 +454,6 @@ fun WirelessScreen(
                                         }
                                     }
                                 }
-                                2 -> {
-                                    // ── Sub-Tab 2: Manual Connect (No pairing banner here!) ──
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(20.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        Text(
-                                            "Connect by IP & Dynamic Port",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            "Enter the IP address and dynamic port shown under Settings > Developer Options > Wireless debugging on the target device.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        OutlinedTextField(
-                                            value = manualIp,
-                                            onValueChange = { manualIp = it },
-                                            label = { Text("Target Device IP Address") },
-                                            placeholder = { Text("e.g. 192.168.1.105") },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(64.dp),
-                                            singleLine = true,
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            shape = RoundedCornerShape(12.dp)
-                                        )
-
-                                        // Pairing Port and Connect Port (Uniform Equal-Sized 64dp Boxes)
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            OutlinedTextField(
-                                                value = manualPairingPort,
-                                                onValueChange = { manualPairingPort = it },
-                                                label = { Text("Pairing Port", maxLines = 1) },
-                                                placeholder = { Text("e.g. 38411") },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(64.dp),
-                                                singleLine = true,
-                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            OutlinedTextField(
-                                                value = manualPort,
-                                                onValueChange = { manualPort = it },
-                                                label = { Text("Connect Port", maxLines = 1) },
-                                                placeholder = { Text("5555 / 41255") },
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(64.dp),
-                                                singleLine = true,
-                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                        }
-
-                                        // 6-digit Wi-Fi Pairing Code (Monospace bold, visible)
-                                        OutlinedTextField(
-                                            value = manualPairingCode,
-                                            onValueChange = { manualPairingCode = it.take(6) },
-                                            label = { Text("6-Digit Wi-Fi Pairing Code (PIN)") },
-                                            placeholder = { Text("e.g. 842109") },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(64.dp),
-                                            singleLine = true,
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            shape = RoundedCornerShape(12.dp),
-                                            textStyle = MaterialTheme.typography.titleMedium.copy(
-                                                fontFamily = FontFamily.Monospace,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-
-                                        if (manualPairingCode.isNotBlank() || manualPairingPort.isNotBlank()) {
-                                            Button(
-                                                onClick = {
-                                                    val pairP = manualPairingPort.toIntOrNull() ?: manualPort.toIntOrNull() ?: 5555
-                                                    val connP = manualPort.toIntOrNull() ?: 5555
-                                                    viewModel.pairWithCode(manualIp.trim(), pairP, manualPairingCode.trim(), connP)
-                                                },
-                                                enabled = manualIp.isNotBlank() && !isLoading,
-                                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                                shape = RoundedCornerShape(12.dp)
-                                            ) {
-                                                Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("Pair & Connect to Remote Device")
-                                            }
-                                        } else {
-                                            Button(
-                                                onClick = {
-                                                    val p = manualPort.toIntOrNull() ?: 5555
-                                                    viewModel.connectManual(manualIp.trim(), p)
-                                                },
-                                                enabled = manualIp.isNotBlank() && !isLoading,
-                                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                                shape = RoundedCornerShape(12.dp)
-                                            ) {
-                                                if (isLoading) {
-                                                    CircularProgressIndicator(
-                                                        modifier = Modifier.size(18.dp),
-                                                        strokeWidth = 2.dp,
-                                                        color = MaterialTheme.colorScheme.onPrimary
-                                                    )
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text("Connecting...")
-                                                } else {
-                                                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text("Connect to Remote Device")
-                                                }
-                                            }
-                                        }
-
-                                        OutlinedButton(
-                                            onClick = { showPairingDialog = true },
-                                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                                            shape = RoundedCornerShape(12.dp)
-                                        ) {
-                                            Icon(Icons.Default.Pin, contentDescription = null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Open Pair Device Dialog (QR / PIN)")
-                                        }
-
-                                        Spacer(Modifier.weight(1f))
-                                    }
-                                }
                             }
                         }
                     }
@@ -765,7 +604,10 @@ fun WirelessScreen(
 private fun ConnectedDeviceInfoContent(
     connectedName: String,
     isAndroidTv: Boolean,
+    deviceInfo: RemoteDeviceInfo?,
     packagesCount: Int,
+    systemCount: Int,
+    userCount: Int,
     disabledCount: Int,
     recommendedCount: Int,
     tvCatalogSize: Int,
@@ -776,8 +618,8 @@ private fun ConnectedDeviceInfoContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Hero Device Card
         ElevatedCard(
@@ -787,7 +629,7 @@ private fun ConnectedDeviceInfoContent(
                 containerColor = TierRecommended.copy(alpha = 0.08f)
             )
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(18.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -808,14 +650,21 @@ private fun ConnectedDeviceInfoContent(
                         }
                     }
 
-                    BadgePill(
-                        label = "Connected & Authorized",
-                        color = TierRecommended,
-                        bgColor = TierRecommended.copy(alpha = 0.15f)
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BadgePill(
+                            label = if (isAndroidTv) "Android TV" else "Android Phone",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                        )
+                        BadgePill(
+                            label = "Connected",
+                            color = TierRecommended,
+                            bgColor = TierRecommended.copy(alpha = 0.15f)
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 Text(
                     text = connectedName,
@@ -823,13 +672,15 @@ private fun ConnectedDeviceInfoContent(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = if (isAndroidTv) "Android TV / Google TV device session" else "Android phone session",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (deviceInfo != null && deviceInfo.host.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Wireless ADB · ${deviceInfo.host}:${deviceInfo.port}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
 
                 if (isAndroidTv) {
                     Spacer(Modifier.height(12.dp))
@@ -861,7 +712,7 @@ private fun ConnectedDeviceInfoContent(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 // Disconnect Button (Prominent & Clear)
                 FilledTonalButton(
@@ -880,25 +731,121 @@ private fun ConnectedDeviceInfoContent(
             }
         }
 
-        // Summary Stats Card
+        // Detailed Hardware & OS Specifications Card
+        if (deviceInfo != null) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.PermDeviceInformation,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Device Specifications",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    SpecRow(label = "Manufacturer / Brand", value = "${deviceInfo.manufacturer} · ${deviceInfo.brand}")
+                    SpecRow(label = "Model Name", value = deviceInfo.model)
+                    if (deviceInfo.deviceName.isNotBlank()) {
+                        SpecRow(label = "Device Codename", value = deviceInfo.deviceName)
+                    }
+                    SpecRow(
+                        label = "Android Version",
+                        value = if (deviceInfo.sdkVersion.isNotBlank()) "Android ${deviceInfo.androidVersion} (API ${deviceInfo.sdkVersion})" else deviceInfo.androidVersion
+                    )
+                    if (deviceInfo.securityPatch.isNotBlank()) {
+                        SpecRow(label = "Security Patch Level", value = deviceInfo.securityPatch)
+                    }
+                    if (deviceInfo.displayResolution.isNotBlank()) {
+                        val densityStr = if (deviceInfo.displayDensity.isNotBlank()) " · ${deviceInfo.displayDensity} dpi" else ""
+                        SpecRow(label = "Display Resolution", value = "${deviceInfo.displayResolution}$densityStr")
+                    }
+                    if (deviceInfo.cpuAbi.isNotBlank()) {
+                        SpecRow(label = "CPU Architecture (ABI)", value = deviceInfo.cpuAbi)
+                    }
+                }
+            }
+        }
+
+        // Installed Packages Categorization Analytics Card
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Analytics,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Installed Packages Categorization",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Text(
-                    "Remote Package Statistics",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    "Queried directly over ADB via Android pm flags (-s, -3, -d)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 Spacer(Modifier.height(12.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StatBox(label = "Total Apps", value = "$packagesCount", color = MaterialTheme.colorScheme.primary)
-                    StatBox(label = "Disabled", value = "$disabledCount", color = MaterialTheme.colorScheme.secondary)
-                    StatBox(label = "Recommended", value = "$recommendedCount", color = TierRecommended)
+                    StatBox(label = "System Apps", value = "$systemCount", color = MaterialTheme.colorScheme.secondary)
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatBox(label = "User Apps", value = "$userCount", color = MaterialTheme.colorScheme.tertiary)
+                    StatBox(label = "Disabled", value = "$disabledCount", color = Color(0xFFF59E0B))
+                }
+
+                if (recommendedCount > 0) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = TierRecommended.copy(alpha = 0.12f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, null, tint = TierRecommended, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "$recommendedCount bloat package(s) safe & recommended to disable.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TierRecommended,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -917,6 +864,29 @@ private fun ConnectedDeviceInfoContent(
         }
 
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SpecRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = FontFamily.Monospace
+        )
     }
 }
 
@@ -1083,39 +1053,39 @@ private fun SavedDeviceProfileCard(
             val dateStr = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(profile.lastConnected))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (profile.isAndroidTv) {
-                        BadgePill(
-                            label = "Android TV",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
-                        )
-                    }
+                if (profile.isAndroidTv) {
                     BadgePill(
-                        label = "${profile.disabledPackages.size} disabled",
+                        label = "Android TV",
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                    )
-                    BadgePill(
-                        label = "Seen $dateStr",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        bgColor = MaterialTheme.colorScheme.surfaceVariant
+                        bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
                     )
                 }
+                BadgePill(
+                    label = "${profile.disabledPackages.size} disabled",
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                )
+                BadgePill(
+                    label = "Seen $dateStr",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    bgColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
 
-                Button(
-                    onClick = onConnect,
-                    enabled = !isLoading,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Connect", style = MaterialTheme.typography.labelSmall)
-                }
+            Spacer(Modifier.height(12.dp))
+
+            Button(
+                onClick = onConnect,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Connect Device", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

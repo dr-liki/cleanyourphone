@@ -3,6 +3,7 @@ package com.drliki.cleanyourphone.data
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import com.drliki.cleanyourphone.model.CategorizedPackages
 import com.drliki.cleanyourphone.model.DevicePackage
 import com.drliki.cleanyourphone.model.PROTECTED_PACKAGES
 import com.drliki.cleanyourphone.model.PackageCategory
@@ -164,6 +165,38 @@ class UadRepository(private val context: Context) {
             toDevicePackage(appInfo.packageName, cat, pm, appInfo)
         }.sortedWith(compareBy<DevicePackage> { it.tier.ordinal }.thenBy { it.packageName })
     }
+
+    /** Resolve categorized remote packages against UAD-ng or CleanYourTV catalog with real system/user/disabled status. */
+    suspend fun resolveRemotePackages(categorized: CategorizedPackages, isTv: Boolean = false): List<DevicePackage> =
+        withContext(Dispatchers.IO) {
+            val tvCat = if (isTv) loadTvCatalog() else emptyMap()
+            val phoneCat = loadCatalog()
+            categorized.allPackages.map { pkgName ->
+                val tvEntry = if (isTv) tvCat[pkgName] else null
+                val phoneEntry = phoneCat[pkgName]
+                val entry = tvEntry ?: phoneEntry
+                val tier = entry?.let { RemovalTier.from(it.removal) } ?: RemovalTier.UNLISTED
+                val category = entry?.let { PackageCategory.from(it.list) } ?: PackageCategory.UNLISTED
+                val isProtected = pkgName in PROTECTED_PACKAGES || tier == RemovalTier.UNSAFE
+                val description = tvEntry?.description ?: phoneEntry?.description
+                    ?: if (isTv) "Not cataloged in CleanYourTV database." else "Not cataloged in UAD-ng database."
+
+                val isSystem = pkgName in categorized.systemPackages || (pkgName !in categorized.userPackages)
+                val isEnabled = pkgName !in categorized.disabledPackages
+
+                DevicePackage(
+                    packageName = pkgName,
+                    appLabel = pkgName.substringAfterLast('.').replaceFirstChar { it.uppercase() },
+                    tier = tier,
+                    category = category,
+                    description = description,
+                    isEnabled = isEnabled,
+                    isSystemApp = isSystem,
+                    isSafeguardLocked = isProtected,
+                    safeguardReason = safeguardReason(pkgName, tier)
+                )
+            }.sortedWith(compareBy<DevicePackage> { it.tier.ordinal }.thenBy { it.packageName })
+        }
 
     /** Resolve a list of remote package names against UAD-ng or CleanYourTV catalog. */
     suspend fun resolveRemotePackages(names: List<String>, isTv: Boolean = false): List<DevicePackage> =

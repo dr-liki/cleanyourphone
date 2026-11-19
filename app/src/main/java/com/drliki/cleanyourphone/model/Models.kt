@@ -91,7 +91,49 @@ data class SavedDeviceProfile(
     val isAndroidTv: Boolean = false
 )
 
+// ── Categorized package list from ADB / pm ────────────────────────────────
+@Serializable
+data class CategorizedPackages(
+    val allPackages: List<String> = emptyList(),
+    val systemPackages: Set<String> = emptySet(),
+    val userPackages: Set<String> = emptySet(),
+    val disabledPackages: Set<String> = emptySet()
+)
+
+// ── Detailed specifications of connected remote device ───────────────────────
+@Serializable
+data class RemoteDeviceInfo(
+    val manufacturer: String = "",
+    val brand: String = "",
+    val model: String = "",
+    val deviceName: String = "",
+    val androidVersion: String = "",
+    val sdkVersion: String = "",
+    val securityPatch: String = "",
+    val cpuAbi: String = "",
+    val displayResolution: String = "",
+    val displayDensity: String = "",
+    val isTv: Boolean = false,
+    val host: String = "",
+    val port: Int = 0
+)
+
+// ── Comprehensive backup snapshot data ───────────────────────────────────────
+@Serializable
+data class AppBackupData(
+    val version: String = "2.8.0",
+    val timestamp: Long = System.currentTimeMillis(),
+    val exportedDate: String = "",
+    val savedProfiles: List<SavedDeviceProfile> = emptyList(),
+    val actionHistory: List<ActionLogEntry> = emptyList(),
+    val uadRepoUrl: String = "",
+    val tvRepoUrl: String = "",
+    val autoUpdateOnLaunch: Boolean = false,
+    val autoUpdateTvOnLaunch: Boolean = false
+)
+
 // ── Reversible action log entry ──────────────────────────────────────────────
+@Serializable
 data class ActionLogEntry(
     val id: String = UUID.randomUUID().toString(),
     val timestamp: String = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date()),
@@ -100,7 +142,8 @@ data class ActionLogEntry(
     val action: String,
     val undoCommand: String,
     val deviceName: String = "Local Device",
-    val isUndone: Boolean = false
+    val isUndone: Boolean = false,
+    val mode: String = "SHIZUKU"
 )
 
 // ── Core protected packages that must never be disabled ──────────────────────
