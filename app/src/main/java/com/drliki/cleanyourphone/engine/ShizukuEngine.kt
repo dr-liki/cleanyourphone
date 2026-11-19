@@ -2,7 +2,9 @@ package com.drliki.cleanyourphone.engine
 
 import android.content.pm.PackageManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -37,6 +39,13 @@ class ShizukuEngine {
 
     suspend fun shell(command: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
+            if (!Shizuku.pingBinder()) {
+                throw IllegalStateException("Shizuku binder is disconnected. Please ensure the Shizuku app is running.")
+            }
+            if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+                throw IllegalStateException("Shizuku permission not granted. Please tap 'Grant Permission'.")
+            }
+
             val method = Shizuku::class.java.getDeclaredMethod(
                 "newProcess",
                 Array<String>::class.java,
@@ -48,13 +57,21 @@ class ShizukuEngine {
                 null, arrayOf("sh", "-c", command), null, null
             ) as Process
 
-            val stdout = BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
-            val stderr = BufferedReader(InputStreamReader(process.errorStream)).use { it.readText() }
-            val exit = process.waitFor()
-            if (exit != 0 && stderr.isNotBlank()) {
-                throw IllegalStateException("Shell error ($exit): ${stderr.trim()}")
+            withTimeout(15_000) {
+                val stdoutDeferred = async(Dispatchers.IO) {
+                    BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
+                }
+                val stderrDeferred = async(Dispatchers.IO) {
+                    BufferedReader(InputStreamReader(process.errorStream)).use { it.readText() }
+                }
+                val exit = process.waitFor()
+                val stdout = stdoutDeferred.await()
+                val stderr = stderrDeferred.await()
+                if (exit != 0 && stderr.isNotBlank()) {
+                    throw IllegalStateException("Command failed ($exit): ${stderr.trim()}")
+                }
+                stdout.trim()
             }
-            stdout.trim()
         }
     }
 

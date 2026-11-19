@@ -11,7 +11,7 @@ on:
       release_tag:
         description: "Release tag to publish (e.g. v2.7.0)"
         required: false
-        default: "v2.8.0"
+        default: "v2.9.0"
 
 permissions:
   contents: write
@@ -133,12 +133,14 @@ jobs:
           body: |
             ## 📱 CleanYourPhone ${{ steps.package_step.outputs.version }}
 
-            ### 🌟 What's New in v2.8.0
-            - **💾 Comprehensive Backup & Restore**: Export and import complete snapshots of your debloat configuration, custom repository URLs, remembered device profiles, and action history via JSON, clipboard, or Android share sheet.
-            - **📊 Deep Remote Device Analytics**: Tab 1 ("Device") displays full device specifications (Manufacturer, Model, Android version, SDK level, Security patch, Display resolution/density, CPU architecture) and live package breakdown (Total, System, User, and Disabled apps).
-            - **📋 Persistent Multi-Device Action History**: All debloat and restore actions across all connected devices and local Shizuku are permanently preserved, with device filter chips to view actions by device.
-            - **🧭 Streamlined Wireless Debloater Flow**: 3-tab Bottom Navigation (Device, Packages, History) only activates once a device connection is established. Clean 2-tab disconnected view (Saved Profiles and Scan Network) with full-width reconnect buttons.
-            - **🧹 Top Bar & Menu Polish**: Cleaned up redundant top-bar refresh and pair buttons; updated Mode Selection to "Other Phone/TV" with intuitive one-tap navigation.
+            ### 🌟 What's New in v2.9.0
+            - **🔍 Top Header Search Action**: Moved search inputs from individual tabs into the top header as an action button beside the menu button.
+            - **⭐ Brand-Tailored Recommendations**: Automatically identifies connected phone and TV brand/model (Samsung, Xiaomi, POCO, Google Pixel, OnePlus, OPPO, Vivo, Motorola, Sony, TCL, etc.) and highlights tailored recommendations.
+            - **🏷️ Unlisted Tier Filter**: Added Unlisted filter chip to the Removal Tiers filter row for easy management of uncataloged packages.
+            - **📱 Comprehensive Device Specs in Shizuku Mode**: Tab 1 ("Status") now provides full hardware and OS specifications on the local device directly.
+            - **🗑️ Saved Profile Delete with Confirmation**: Added a Delete button with an explicit confirmation dialog right beside the Connect button on saved profiles.
+            - **📌 Persistent Filter Selections**: All search queries, type filters, safety tiers, and sorting preferences are preserved across tab switches and app sessions.
+            - **⚡ Continuous Connection & Auto-Reconnect**: Implemented 15-second background keepalive heartbeat loop and automatic socket reconnect on drops for uninterrupted debloating.
 
             ### 📦 Downloads
             | File | For |

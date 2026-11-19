@@ -67,7 +67,9 @@ data class DevicePackage(
     val isEnabled: Boolean,
     val isSystemApp: Boolean = false,
     val isSafeguardLocked: Boolean = false,
-    val safeguardReason: String? = null
+    val safeguardReason: String? = null,
+    val isTailored: Boolean = false,
+    val tailoredReason: String? = null
 )
 
 // ── Discovered remote device on the network ──────────────────────────────────
@@ -121,7 +123,7 @@ data class RemoteDeviceInfo(
 // ── Comprehensive backup snapshot data ───────────────────────────────────────
 @Serializable
 data class AppBackupData(
-    val version: String = "2.8.0",
+    val version: String = "2.9.0",
     val timestamp: Long = System.currentTimeMillis(),
     val exportedDate: String = "",
     val savedProfiles: List<SavedDeviceProfile> = emptyList(),

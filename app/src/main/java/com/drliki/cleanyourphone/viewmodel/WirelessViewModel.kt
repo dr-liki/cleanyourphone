@@ -67,6 +67,14 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     private val _snackbar = MutableStateFlow<String?>(null)
     val snackbar = _snackbar.asStateFlow()
 
+    // ── Persistent Filter States across tab switches & session ───────────────
+    val searchQuery = MutableStateFlow("")
+    val isSearchActive = MutableStateFlow(false)
+    val selectedTypeFilter = MutableStateFlow(com.drliki.cleanyourphone.model.AppTypeFilter.ALL)
+    val selectedTier = MutableStateFlow<com.drliki.cleanyourphone.model.RemovalTier?>(null)
+    val selectedSort = MutableStateFlow(com.drliki.cleanyourphone.ui.components.AppSortOption.NAME_ASC)
+    val isTailoredFilter = MutableStateFlow(false)
+
     // ── Pairing state ────────────────────────────────────────────────────────
     private val _pairingQrPayload = MutableStateFlow("")
     val pairingQrPayload = _pairingQrPayload.asStateFlow()
@@ -245,7 +253,14 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { catPkgs ->
                     _categorizedPackages.value = catPkgs
                     val isTv = _isAndroidTv.value
-                    val resolved = repo.resolveRemotePackages(catPkgs, isTv = isTv)
+                    val info = _deviceInfo.value
+                    val resolved = repo.resolveRemotePackages(
+                        catPkgs,
+                        isTv = isTv,
+                        brand = info?.brand,
+                        manufacturer = info?.manufacturer,
+                        model = info?.model
+                    )
                     _packages.value = resolved
 
                     // Update total count in saved profile
@@ -320,6 +335,7 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 it.packageName in selected && !it.isSafeguardLocked && it.isEnabled
             }
             var ok = 0
+            var lastError: String? = null
             val disabledNames = mutableListOf<String>()
             val newEntries = mutableListOf<ActionLogEntry>()
             val devName = _connectedName.value.ifBlank { "Remote Device" }
@@ -339,6 +355,8 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                     _packages.value = _packages.value.map {
                         if (it.packageName == pkg.packageName) it.copy(isEnabled = false) else it
                     }
+                }.onFailure { err ->
+                    lastError = err.message
                 }
             }
             if (newEntries.isNotEmpty()) {
@@ -350,7 +368,11 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
                 settings.recordDisabledPackages(dev.host, dev.port, disabledNames, _packages.value.size)
                 refreshSavedProfiles()
             }
-            _snackbar.value = "Disabled $ok package(s) on $devName"
+            if (ok > 0) {
+                _snackbar.value = "Disabled $ok package(s) on $devName"
+            } else {
+                _snackbar.value = "Failed to disable packages: ${lastError ?: "Command failed"}"
+            }
         }
     }
 
@@ -368,6 +390,20 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun undoAction(entry: ActionLogEntry) {
         viewModelScope.launch {
             engine.enablePackage(entry.packageName).onSuccess {
+                val updated = entry.copy(isUndone = true)
+                settings.updateAction(updated)
+                _actionLog.value = _actionLog.value.map {
+                    if (it.id == entry.id) updated else it
+                }
+                _packages.value = _packages.value.map {
+                    if (it.packageName == entry.packageName) it.copy(isEnabled = true) else it
+                }
+                _snackbar.value = "Undone: ${entry.appLabel}"
+            }.onFailure {
+                _snackbar.value = "Failed to undo ${entry.appLabel}: ${it.message}"
+            }
+        }
+    }
                 val updated = entry.copy(isUndone = true)
                 settings.updateAction(updated)
                 _actionLog.value = _actionLog.value.map {

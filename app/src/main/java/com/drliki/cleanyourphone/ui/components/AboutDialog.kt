@@ -69,7 +69,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.8.0 · Material 3",
+                        "v2.9.0 · Material 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -97,34 +97,34 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AboutFeatureRow(
-                        icon = Icons.Default.Backup,
-                        title = "Comprehensive Backup & Restore",
-                        subtitle = "Export and restore debloat states, custom URLs, device profiles, and action history via JSON or clipboard."
+                        icon = Icons.Default.Search,
+                        title = "Top Header Search",
+                        subtitle = "Fast and clean search icon button in the header across all screens."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.Star,
+                        title = "Brand-Tailored Recommendations",
+                        subtitle = "Intelligently tailors debloat recommendations to the connected phone/TV brand and model."
+                    )
+                    AboutFeatureRow(
+                        icon = Icons.Default.Tune,
+                        title = "Unlisted Filter & Persistent Selections",
+                        subtitle = "Filter by Unlisted packages and keep selections persistent across tab switches."
                     )
                     AboutFeatureRow(
                         icon = Icons.Default.PermDeviceInformation,
-                        title = "Deep Device Specs & Analytics",
-                        subtitle = "Inspects Android OS, API level, security patch, screen resolution/density, and CPU architecture."
+                        title = "Deep Device & OS Specs in Both Modes",
+                        subtitle = "Full hardware specs, Android version, display resolution/density, and CPU architecture in both Shizuku and Wireless modes."
                     )
                     AboutFeatureRow(
-                        icon = Icons.Default.Category,
-                        title = "Package Categorization over ADB",
-                        subtitle = "Categorizes remote packages into System, User 3rd-party, and Disabled apps with accurate filtering."
+                        icon = Icons.Default.WifiTethering,
+                        title = "Continuous Connection & Auto-Reconnect",
+                        subtitle = "Background heartbeat keeps ADB and Shizuku connections alive with auto-reconnect."
                     )
                     AboutFeatureRow(
-                        icon = Icons.Default.History,
-                        title = "Persistent Cross-Device Action Log",
-                        subtitle = "Retains activities even after disconnection, with interactive device connection filtering."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Tv,
-                        title = "Android & Google TV Support",
-                        subtitle = "Auto-detects TVs and uses CleanYourTV debloat catalog (492+ models)."
-                    )
-                    AboutFeatureRow(
-                        icon = Icons.Default.Shield,
-                        title = "100% Reversible Non-Destructive",
-                        subtitle = "Uses 'pm disable-user --user 0'. Zero data loss and instant one-tap undo."
+                        icon = Icons.Default.DeleteOutline,
+                        title = "Safe Profile Management",
+                        subtitle = "Delete button with confirmation dialogue right beside connect button."
                     )
                 }
 

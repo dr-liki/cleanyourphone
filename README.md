@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.8.0
+# 📱 CleanYourPhone v2.9.0
 
 **Debloat Android phones & Android/Google TVs — directly on this device via Shizuku, or wirelessly connect to other phones and TVs over Wi-Fi.**
 
@@ -17,6 +17,29 @@
 ---
 
 **CleanYourPhone** is a modern, open-source Android debloater built from the ground up with **Material Design 3**. It offers a dual-engine architecture that lets you optimize your current device or connect wirelessly across your local network to debloat other phones and Android/Google TVs.
+
+---
+
+## 🌟 What's New in v2.9.0
+
+- **🔍 Top Header Search Action**:
+  - Moved search boxes from individual tab contents to the top header as an intuitive search button beside the menu button.
+  - Tapping Search seamlessly transforms the top bar into a clean Material 3 search field with instant filtering across packages and action logs.
+- **⭐ Tailored Brand & Model Recommendations**:
+  - Automatically identifies connected phone and TV brand/model (Samsung, Xiaomi, POCO, Google Pixel, OnePlus, OPPO, Vivo, Motorola, Sony, TCL, etc.).
+  - Curates and highlights debloat recommendations tailored specifically to that device's OEM software and models.
+  - Added "Tailored" filter chip and badge pills on package cards.
+- **🏷️ Unlisted Tier Filter**:
+  - Full support for filtering unlisted packages in the Removal Tiers row (`All Tiers`, `Tailored`, `Recommended`, `Advanced`, `Expert`, `Unsafe`, `Unlisted`).
+- **📱 Comprehensive Device & OS Info in Shizuku Mode**:
+  - Tab 1 ("Status") now features full hardware and OS specifications: Manufacturer, Brand, Model, Codename, Android Version, SDK API Level, Security Patch date, Display Resolution/Density, CPU ABI, Binder Privileged Access (UID 2000), and full package metrics.
+- **🗑️ Saved Profile Delete with Confirmation**:
+  - Repositioned the "Delete" button right beside the "Connect Device" button with an explicit Material 3 confirmation dialog.
+- **📌 Persistent Filter Selections**:
+  - Search queries, app type filters, safety tiers, sorting modes, and device filter selections remain intact across tab switches, screen rotations, and sessions until manually changed.
+- **⚡ Continuous Connection & Auto-Reconnect**:
+  - Implemented background keepalive heartbeat loop (every 15s) and automatic socket reconnection on network drops.
+  - Asynchronous stream reading and process timeout prevents Shizuku shell deadlocks, ensuring continuous connection until manual disconnect.
 
 ---
 

@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.drliki.cleanyourphone.engine.ShizukuStatus
+import com.drliki.cleanyourphone.model.RemoteDeviceInfo
 import com.drliki.cleanyourphone.model.RemovalTier
 import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.BadgePill
@@ -30,14 +31,23 @@ import com.drliki.cleanyourphone.viewmodel.ShizukuViewModel
 fun ShizukuScreen(
     viewModel: ShizukuViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToActionLog: () -> Unit,
+    onNavigateToActionLog: () -> Unit = {},
     onOpenSettings: () -> Unit
 ) {
-    val packages by viewModel.packages.collectAsState()
     val status by viewModel.status.collectAsState()
+    val packages by viewModel.packages.collectAsState()
     val actionLog by viewModel.actionLog.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val snackbarMsg by viewModel.snackbar.collectAsState()
+    val deviceInfo by viewModel.deviceInfo.collectAsState()
+
+    // Persistent filter states
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearchActive by viewModel.isSearchActive.collectAsState()
+    val selectedTypeFilter by viewModel.selectedTypeFilter.collectAsState()
+    val selectedTier by viewModel.selectedTier.collectAsState()
+    val selectedSort by viewModel.selectedSort.collectAsState()
+    val isTailoredFilter by viewModel.isTailoredFilter.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedNavTab by remember { mutableIntStateOf(if (status is ShizukuStatus.Ready) 1 else 0) }
@@ -63,40 +73,86 @@ fun ShizukuScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            "This Device",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                    if (isSearchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.searchQuery.value = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            placeholder = { Text("Search apps by name or ID…") },
+                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
+                                        Icon(Icons.Default.Clear, "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        when (status) {
-                                            is ShizukuStatus.Ready -> TierRecommended
-                                            is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B)
-                                            is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.outline
-                                        }
-                                    )
-                            )
-                            Spacer(Modifier.width(6.dp))
+                    } else {
+                        Column {
                             Text(
-                                status.label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                "This Device",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            when (status) {
+                                                is ShizukuStatus.Ready -> TierRecommended
+                                                is ShizukuStatus.PermissionNeeded -> Color(0xFFF59E0B)
+                                                is ShizukuStatus.NotRunning -> MaterialTheme.colorScheme.outline
+                                            }
+                                        )
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    status.label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = {
+                        if (isSearchActive) {
+                            viewModel.isSearchActive.value = false
+                            viewModel.searchQuery.value = ""
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
+                            contentDescription = if (isSearchActive) "Close search" else "Back"
+                        )
                     }
                 },
                 actions = {
+                    // Search Button beside menu
+                    IconButton(onClick = {
+                        val willBeActive = !isSearchActive
+                        viewModel.isSearchActive.value = willBeActive
+                        if (!willBeActive) viewModel.searchQuery.value = ""
+                        if (willBeActive && selectedNavTab == 0) {
+                            selectedNavTab = 1 // Switch to Packages when starting search
+                        }
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    }
+
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -180,12 +236,16 @@ fun ShizukuScreen(
         ) {
             when (selectedNavTab) {
                 0 -> {
-                    // ── Tab 1: Shizuku Service Connection Status & Refresh ──────
+                    // ── Tab 1: Shizuku Service Status & Device Information ──────
                     ShizukuStatusContent(
                         status = status,
+                        deviceInfo = deviceInfo,
                         packagesCount = packages.size,
+                        systemCount = packages.count { it.isSystemApp },
+                        userCount = packages.count { !it.isSystemApp },
                         disabledCount = packages.count { !it.isEnabled },
                         recommendedCount = packages.count { it.isEnabled && it.tier == RemovalTier.RECOMMENDED },
+                        tailoredCount = packages.count { it.isEnabled && it.isTailored },
                         onRefreshStatus = {
                             viewModel.refreshStatus()
                             viewModel.loadPackages()
@@ -195,7 +255,7 @@ fun ShizukuScreen(
                     )
                 }
                 1 -> {
-                    // ── Tab 2: App Packages ──────────────────────────────────────
+                    // ── Tab 2: App Packages (with hoisted persistent filters) ────
                     PackageManagementContent(
                         packages = packages,
                         isLoading = isLoading,
@@ -205,6 +265,15 @@ fun ShizukuScreen(
                         onEnablePackage = { pkgName ->
                             viewModel.enablePackage(pkgName)
                         },
+                        searchQuery = searchQuery,
+                        selectedTypeFilter = selectedTypeFilter,
+                        onTypeFilterChange = { viewModel.selectedTypeFilter.value = it },
+                        selectedTier = selectedTier,
+                        onTierChange = { viewModel.selectedTier.value = it },
+                        selectedSort = selectedSort,
+                        onSortChange = { viewModel.selectedSort.value = it },
+                        isTailoredFilter = isTailoredFilter,
+                        onTailoredFilterChange = { viewModel.isTailoredFilter.value = it },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -212,6 +281,7 @@ fun ShizukuScreen(
                     // ── Tab 3: Action Log ────────────────────────────────────────
                     ActionLogContent(
                         actionLog = actionLog,
+                        searchQuery = searchQuery,
                         onUndoAction = { viewModel.undoAction(it) },
                         onUndoMultipleActions = { list ->
                             list.forEach { viewModel.undoAction(it) }
@@ -254,7 +324,7 @@ fun ShizukuScreen(
                         pendingDisablePackages = null
                     }
                 ) {
-                    Text("Disable Selected")
+                    Text("Disable Selected (${targetList.size})")
                 }
             },
             dismissButton = {
@@ -265,7 +335,6 @@ fun ShizukuScreen(
         )
     }
 
-    // About Dialog
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
     }
@@ -274,9 +343,13 @@ fun ShizukuScreen(
 @Composable
 private fun ShizukuStatusContent(
     status: ShizukuStatus,
+    deviceInfo: RemoteDeviceInfo,
     packagesCount: Int,
+    systemCount: Int,
+    userCount: Int,
     disabledCount: Int,
     recommendedCount: Int,
+    tailoredCount: Int,
     onRefreshStatus: () -> Unit,
     onRequestPermission: () -> Unit,
     onGoToPackages: () -> Unit
@@ -443,25 +516,108 @@ private fun ShizukuStatusContent(
             }
         }
 
-        // Summary Statistics Card
+        // ── Device & OS Specifications Card ─────────────────────────────────
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Smartphone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Device Specifications & OS",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                ShizukuSpecRow("Brand / OEM", deviceInfo.brand.ifBlank { deviceInfo.manufacturer })
+                ShizukuSpecRow("Model", deviceInfo.model)
+                ShizukuSpecRow("Device Codename", deviceInfo.deviceName)
+                ShizukuSpecRow("Android Version", "Android ${deviceInfo.androidVersion} (API ${deviceInfo.sdkVersion})")
+                if (deviceInfo.securityPatch.isNotBlank() && deviceInfo.securityPatch != "Unknown") {
+                    ShizukuSpecRow("Security Patch", deviceInfo.securityPatch)
+                }
+                ShizukuSpecRow("Display", "${deviceInfo.displayResolution} (${deviceInfo.displayDensity})")
+                ShizukuSpecRow("CPU Architecture", deviceInfo.cpuAbi)
+            }
+        }
+
+        // ── Summary Statistics Card ─────────────────────────────────────────
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Device App Overview",
+                    "Device App Breakdown",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StatBox(label = "Total Apps", value = "$packagesCount", color = MaterialTheme.colorScheme.primary)
-                    StatBox(label = "Disabled", value = "$disabledCount", color = MaterialTheme.colorScheme.secondary)
-                    StatBox(label = "Recommended", value = "$recommendedCount", color = TierRecommended)
+                    StatBox(label = "System Apps", value = "$systemCount", color = MaterialTheme.colorScheme.secondary)
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatBox(label = "User Apps", value = "$userCount", color = MaterialTheme.colorScheme.tertiary)
+                    StatBox(label = "Disabled", value = "$disabledCount", color = Color(0xFFF59E0B))
+                }
+
+                if (recommendedCount > 0) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = TierRecommended.copy(alpha = 0.12f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, null, tint = TierRecommended, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "$recommendedCount bloat package(s) safe & recommended to disable.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TierRecommended,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                if (tailoredCount > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFEF3C7),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "$tailoredCount package(s) specifically tailored for ${deviceInfo.brand}.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFB45309),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -480,6 +636,29 @@ private fun ShizukuStatusContent(
         }
 
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun ShizukuSpecRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = if (label.contains("Codename") || label.contains("API")) FontFamily.Monospace else FontFamily.Default
+        )
     }
 }
 

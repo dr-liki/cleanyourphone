@@ -56,12 +56,17 @@ fun PackageManagementContent(
     isLoading: Boolean,
     onDisablePackages: (Set<String>) -> Unit,
     onEnablePackage: (String) -> Unit,
+    searchQuery: String = "",
+    selectedTypeFilter: AppTypeFilter = AppTypeFilter.ALL,
+    onTypeFilterChange: (AppTypeFilter) -> Unit = {},
+    selectedTier: RemovalTier? = null,
+    onTierChange: (RemovalTier?) -> Unit = {},
+    selectedSort: AppSortOption = AppSortOption.NAME_ASC,
+    onSortChange: (AppSortOption) -> Unit = {},
+    isTailoredFilter: Boolean = false,
+    onTailoredFilterChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedTypeFilter by remember { mutableStateOf(AppTypeFilter.ALL) }
-    var selectedTier by remember { mutableStateOf<RemovalTier?>(null) }
-    var selectedSort by remember { mutableStateOf(AppSortOption.NAME_ASC) }
     var showSortMenu by remember { mutableStateOf(false) }
     var selectedPkgs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
@@ -69,7 +74,7 @@ fun PackageManagementContent(
     val scope = rememberCoroutineScope()
     val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
 
-    val filtered = remember(packages, searchQuery, selectedTypeFilter, selectedTier) {
+    val filtered = remember(packages, searchQuery, selectedTypeFilter, selectedTier, isTailoredFilter) {
         packages.filter { pkg ->
             val matchesQuery = searchQuery.isBlank() ||
                 pkg.packageName.contains(searchQuery, true) ||
@@ -84,7 +89,9 @@ fun PackageManagementContent(
             }
 
             val matchesTier = selectedTier == null || pkg.tier == selectedTier
-            matchesQuery && matchesType && matchesTier
+            val matchesTailored = !isTailoredFilter || pkg.isTailored
+
+            matchesQuery && matchesType && matchesTier && matchesTailored
         }
     }
 
@@ -98,15 +105,16 @@ fun PackageManagementContent(
             )
             AppSortOption.PACKAGE_ASC -> filtered.sortedBy { it.packageName.lowercase() }
             AppSortOption.TIER_SAFETY -> filtered.sortedWith(
-                compareBy<DevicePackage> {
-                    when (it.tier) {
-                        RemovalTier.RECOMMENDED -> 0
-                        RemovalTier.ADVANCED -> 1
-                        RemovalTier.EXPERT -> 2
-                        RemovalTier.UNSAFE -> 3
-                        RemovalTier.UNLISTED -> 4
-                    }
-                }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
+                compareBy<DevicePackage> { if (it.isTailored) 0 else 1 }
+                    .thenBy {
+                        when (it.tier) {
+                            RemovalTier.RECOMMENDED -> 0
+                            RemovalTier.ADVANCED -> 1
+                            RemovalTier.EXPERT -> 2
+                            RemovalTier.UNSAFE -> 3
+                            RemovalTier.UNLISTED -> 4
+                        }
+                    }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.appLabel.ifBlank { it.packageName } }
             )
             AppSortOption.STATUS_DISABLED -> filtered.sortedWith(
                 compareBy<DevicePackage> { if (!it.isEnabled) 0 else 1 }
@@ -124,28 +132,9 @@ fun PackageManagementContent(
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else {
             Column(Modifier.fillMaxSize()) {
-                // ── Search Bar ───────────────────────────────────────────
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    placeholder = { Text("Search packages by name or ID\u2026") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty())
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, "Clear")
-                            }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
                 // ── Filter Row 1: App Type (All, System, User, Disabled) ──
                 LazyRow(
-                    Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(AppTypeFilter.entries) { filter ->
@@ -157,29 +146,50 @@ fun PackageManagementContent(
                         }
                         FilterChip(
                             selected = selectedTypeFilter == filter,
-                            onClick = { selectedTypeFilter = filter },
+                            onClick = { onTypeFilterChange(filter) },
                             label = { Text("${filter.label} ($count)") }
                         )
                     }
                 }
 
-                // ── Filter Row 2: Removal Tiers (Recommended, Advanced, etc.) ─
+                // ── Filter Row 2: Removal Tiers (Recommended, Advanced, Unlisted, Tailored) ─
                 LazyRow(
                     Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         FilterChip(
-                            selected = selectedTier == null,
-                            onClick = { selectedTier = null },
+                            selected = selectedTier == null && !isTailoredFilter,
+                            onClick = {
+                                onTierChange(null)
+                                onTailoredFilterChange(false)
+                            },
                             label = { Text("All Tiers") }
                         )
                     }
-                    items(RemovalTier.entries.filter { it != RemovalTier.UNLISTED }) { tier ->
+                    val tailoredCount = packages.count { it.isTailored }
+                    if (tailoredCount > 0) {
+                        item {
+                            FilterChip(
+                                selected = isTailoredFilter,
+                                onClick = { onTailoredFilterChange(!isTailoredFilter) },
+                                label = { Text("Tailored ($tailoredCount)") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isTailoredFilter) MaterialTheme.colorScheme.primary else Color(0xFFF59E0B)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    items(RemovalTier.entries) { tier ->
                         val count = packages.count { it.tier == tier }
                         FilterChip(
                             selected = selectedTier == tier,
-                            onClick = { selectedTier = if (selectedTier == tier) null else tier },
+                            onClick = { onTierChange(if (selectedTier == tier) null else tier) },
                             label = { Text("${tier.label} ($count)") }
                         )
                     }
@@ -510,6 +520,15 @@ fun PackageCard(
                     // Removal Tier Badge
                     TierBadgePill(pkg.tier)
 
+                    // Tailored Brand Recommendation Badge
+                    if (pkg.isTailored) {
+                        BadgePill(
+                            label = "Tailored",
+                            color = Color(0xFFB45309),
+                            bgColor = Color(0xFFFEF3C7)
+                        )
+                    }
+
                     // System / User App Badge
                     if (pkg.isSystemApp) {
                         BadgePill(
@@ -542,6 +561,17 @@ fun PackageCard(
                         text = "🔒 $reason",
                         style = MaterialTheme.typography.labelSmall,
                         color = TierUnsafe,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Tailored device recommendation reason if present
+                pkg.tailoredReason?.let { reason ->
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "⭐ $reason",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB45309),
                         fontWeight = FontWeight.Medium
                     )
                 }

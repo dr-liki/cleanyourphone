@@ -10,10 +10,15 @@ import dadb.AdbKeyPair
 import dadb.Dadb
 import io.github.rhythmcache.adb.AdbClient
 import io.github.rhythmcache.adb.FileKeyProvider
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.Inet4Address
@@ -36,6 +41,9 @@ class AdbEngine(private val context: Context) {
         private set
 
     val isConnected: Boolean get() = (client != null && !(client?.isClosed ?: true)) || dadbConnection != null
+
+    private var keepAliveJob: Job? = null
+    private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
     private var connectDiscoveryListener: NsdManager.DiscoveryListener? = null
@@ -194,6 +202,9 @@ class AdbEngine(private val context: Context) {
                 dadbConnection = activeDadb
                 connectedDevice = device
 
+                // Start background keepalive heartbeat to ensure continuous connection
+                startKeepAlive()
+
                 val model = try {
                     if (activeClient != null) {
                         val res = activeClient.shell("getprop ro.product.model")
@@ -208,6 +219,7 @@ class AdbEngine(private val context: Context) {
         }
 
     fun disconnect() {
+        stopKeepAlive()
         try { client?.close() } catch (_: Exception) { }
         try { dadbConnection?.close() } catch (_: Exception) { }
         client = null
@@ -215,24 +227,110 @@ class AdbEngine(private val context: Context) {
         connectedDevice = null
     }
 
+    // ── Continuous Connection & Keepalive ─────────────────────────────────────
+    private fun startKeepAlive() {
+        stopKeepAlive()
+        keepAliveJob = engineScope.launch {
+            while (isActive) {
+                delay(15_000) // Keepalive heartbeat ping every 15 seconds
+                val dev = connectedDevice ?: break
+                try {
+                    val c = client
+                    if (c != null && !c.isClosed) {
+                        c.shell("echo -n")
+                    } else if (dadbConnection != null) {
+                        dadbConnection?.shell("echo -n")
+                    } else {
+                        silentReconnect()
+                    }
+                } catch (_: Exception) {
+                    // Socket might have closed due to idle timeout; silently re-establish!
+                    silentReconnect()
+                }
+            }
+        }
+    }
+
+    private fun stopKeepAlive() {
+        keepAliveJob?.cancel()
+        keepAliveJob = null
+    }
+
+    private suspend fun silentReconnect(): Boolean = withContext(Dispatchers.IO) {
+        val dev = connectedDevice ?: return@withContext false
+        try {
+            val keyProvider = getKeyProvider()
+            val isPort5555 = dev.port == 5555
+            var newClient: AdbClient? = null
+            var newDadb: Dadb? = null
+            if (!isPort5555) {
+                try {
+                    val c = AdbClient.connectTls(dev.host, dev.port, keyProvider, handshakeTimeoutMs = 4000)
+                    if (c.shell("echo ok").stdoutText.contains("ok")) newClient = c
+                } catch (_: Exception) {
+                    try {
+                        val c = AdbClient.connectTcp(dev.host, dev.port, keyProvider, handshakeTimeoutMs = 3000)
+                        if (c.shell("echo ok").stdoutText.contains("ok")) newClient = c
+                    } catch (_: Exception) {}
+                }
+            } else {
+                try {
+                    val c = AdbClient.connectTcp(dev.host, dev.port, keyProvider, handshakeTimeoutMs = 4000)
+                    if (c.shell("echo ok").stdoutText.contains("ok")) newClient = c
+                } catch (_: Exception) {
+                    try {
+                        val d = createDadb(dev.host, dev.port)
+                        if (d.shell("echo ok").output.contains("ok")) newDadb = d
+                    } catch (_: Exception) {}
+                }
+            }
+            if (newClient != null || newDadb != null) {
+                try { client?.close() } catch (_: Exception) {}
+                try { dadbConnection?.close() } catch (_: Exception) {}
+                client = newClient
+                dadbConnection = newDadb
+                return@withContext true
+            }
+        } catch (_: Exception) {}
+        false
+    }
+
     // ── Shell commands on connected device ───────────────────────────────────
     suspend fun shell(command: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            val c = client
-            if (c != null) {
-                val resp = c.shell(command)
-                if (resp.exitCode != 0) {
-                    throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.stderrText.trim().ifBlank { resp.stdoutText.trim() }}")
+            var lastEx: Throwable? = null
+            for (attempt in 1..2) {
+                try {
+                    val c = client
+                    if (c != null && !c.isClosed) {
+                        val resp = c.shell(command)
+                        if (resp.exitCode != 0) {
+                            throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.stderrText.trim().ifBlank { resp.stdoutText.trim() }}")
+                        }
+                        return@runCatching resp.stdoutText.trim()
+                    }
+                    val d = dadbConnection
+                    if (d != null) {
+                        val resp = d.shell(command)
+                        if (resp.exitCode != 0) {
+                            throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.output.trim()}")
+                        }
+                        return@runCatching resp.output.trim()
+                    }
+                    if (connectedDevice != null && attempt == 1) {
+                        if (silentReconnect()) continue
+                    }
+                    throw IllegalStateException("Not connected")
+                } catch (e: Exception) {
+                    lastEx = e
+                    if (attempt == 1 && connectedDevice != null) {
+                        val reconnected = silentReconnect()
+                        if (reconnected) continue
+                    }
+                    throw e
                 }
-                resp.stdoutText.trim()
-            } else {
-                val d = dadbConnection ?: throw IllegalStateException("Not connected")
-                val resp = d.shell(command)
-                if (resp.exitCode != 0) {
-                    throw IllegalStateException("Command failed (${resp.exitCode}): ${resp.output.trim()}")
-                }
-                resp.output.trim()
             }
+            throw lastEx ?: IllegalStateException("Command failed")
         }
     }
 

@@ -61,6 +61,14 @@ fun WirelessScreen(
     val pairingCode by viewModel.pairingCode.collectAsState()
     val discoveredPairingService by viewModel.discoveredPairingService.collectAsState()
 
+    // Persistent filter states
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearchActive by viewModel.isSearchActive.collectAsState()
+    val selectedTypeFilter by viewModel.selectedTypeFilter.collectAsState()
+    val selectedTier by viewModel.selectedTier.collectAsState()
+    val selectedSort by viewModel.selectedSort.collectAsState()
+    val isTailoredFilter by viewModel.isTailoredFilter.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedNavTab by remember { mutableIntStateOf(if (isConnected) 1 else 0) }
     var connectionSubTab by remember { mutableIntStateOf(0) }
@@ -93,36 +101,82 @@ fun WirelessScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            if (isConnected) connectedName.ifBlank { "Remote Device" } else "Wireless ADB",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                    if (isSearchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.searchQuery.value = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            placeholder = { Text("Search apps by name or ID…") },
+                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
+                                        Icon(Icons.Default.Clear, "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isConnected) TierRecommended else MaterialTheme.colorScheme.outline)
-                            )
-                            Spacer(Modifier.width(6.dp))
+                    } else {
+                        Column {
                             Text(
-                                if (isConnected) {
-                                    if (isAndroidTv) "Connected · Android/Google TV" else "Connected over Wi-Fi"
-                                } else "mDNS Active · Ready",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                if (isConnected) connectedName.ifBlank { "Remote Device" } else "Wireless ADB",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isConnected) TierRecommended else MaterialTheme.colorScheme.outline)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    if (isConnected) {
+                                        if (isAndroidTv) "Connected · Android/Google TV" else "Connected over Wi-Fi"
+                                    } else "mDNS Active · Ready",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = {
+                        if (isSearchActive) {
+                            viewModel.isSearchActive.value = false
+                            viewModel.searchQuery.value = ""
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
+                            contentDescription = if (isSearchActive) "Close search" else "Back"
+                        )
                     }
                 },
                 actions = {
+                    // Search button beside menu
+                    IconButton(onClick = {
+                        val willBeActive = !isSearchActive
+                        viewModel.isSearchActive.value = willBeActive
+                        if (!willBeActive) viewModel.searchQuery.value = ""
+                        if (willBeActive && isConnected && selectedNavTab == 0) {
+                            selectedNavTab = 1
+                        }
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    }
+
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -224,6 +278,7 @@ fun WirelessScreen(
                             userCount = packages.count { !it.isSystemApp },
                             disabledCount = packages.count { !it.isEnabled },
                             recommendedCount = packages.count { it.isEnabled && it.tier == RemovalTier.RECOMMENDED },
+                            tailoredCount = packages.count { it.isEnabled && it.isTailored },
                             tvCatalogSize = viewModel.repo.getTvCatalogSize(),
                             onDisconnect = {
                                 viewModel.disconnect()
@@ -470,6 +525,15 @@ fun WirelessScreen(
                             onEnablePackage = { pkgName ->
                                 viewModel.enablePackage(pkgName)
                             },
+                            searchQuery = searchQuery,
+                            selectedTypeFilter = selectedTypeFilter,
+                            onTypeFilterChange = { viewModel.selectedTypeFilter.value = it },
+                            selectedTier = selectedTier,
+                            onTierChange = { viewModel.selectedTier.value = it },
+                            selectedSort = selectedSort,
+                            onSortChange = { viewModel.selectedSort.value = it },
+                            isTailoredFilter = isTailoredFilter,
+                            onTailoredFilterChange = { viewModel.isTailoredFilter.value = it },
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
@@ -517,6 +581,7 @@ fun WirelessScreen(
                     // ── Tab 2: Action Log ────────────────────────────────────────
                     ActionLogContent(
                         actionLog = actionLog,
+                        searchQuery = searchQuery,
                         onUndoAction = { viewModel.undoAction(it) },
                         onUndoMultipleActions = { list ->
                             list.forEach { viewModel.undoAction(it) }
@@ -610,6 +675,7 @@ private fun ConnectedDeviceInfoContent(
     userCount: Int,
     disabledCount: Int,
     recommendedCount: Int,
+    tailoredCount: Int = 0,
     tvCatalogSize: Int,
     onDisconnect: () -> Unit,
     onManagePackages: () -> Unit
@@ -847,6 +913,29 @@ private fun ConnectedDeviceInfoContent(
                         }
                     }
                 }
+
+                if (tailoredCount > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFEF3C7),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "$tailoredCount package(s) specifically tailored for ${deviceInfo?.brand ?: "this device"}.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFB45309),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -998,6 +1087,8 @@ private fun SavedDeviceProfileCard(
     onConnect: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp)
@@ -1005,44 +1096,33 @@ private fun SavedDeviceProfileCard(
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                if (profile.isAndroidTv) Icons.Default.Tv else Icons.Default.Smartphone,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            profile.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "${profile.host}:${profile.port}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            if (profile.isAndroidTv) Icons.Default.Tv else Icons.Default.Smartphone,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
-
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.DeleteOutline,
-                        contentDescription = "Remove Profile",
-                        tint = MaterialTheme.colorScheme.outline
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        profile.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${profile.host}:${profile.port}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -1077,17 +1157,65 @@ private fun SavedDeviceProfileCard(
 
             Spacer(Modifier.height(12.dp))
 
-            Button(
-                onClick = onConnect,
-                enabled = !isLoading,
+            // Connect & Delete Buttons side-by-side
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Connect Device", style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = onConnect,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Connect Device", style = MaterialTheme.typography.labelMedium)
+                }
+
+                OutlinedButton(
+                    onClick = { showDeleteConfirmDialog = true },
+                    modifier = Modifier.height(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete", style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            icon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete Saved Profile?") },
+            text = {
+                Text(
+                    "Are you sure you want to delete profile \"${profile.name}\" (${profile.host}:${profile.port})? This will remove the remembered connection.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

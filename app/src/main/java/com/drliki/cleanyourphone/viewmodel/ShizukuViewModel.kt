@@ -1,6 +1,10 @@
 package com.drliki.cleanyourphone.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.view.WindowManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.drliki.cleanyourphone.data.AppSettings
@@ -8,10 +12,15 @@ import com.drliki.cleanyourphone.data.UadRepository
 import com.drliki.cleanyourphone.engine.ShizukuEngine
 import com.drliki.cleanyourphone.engine.ShizukuStatus
 import com.drliki.cleanyourphone.model.ActionLogEntry
+import com.drliki.cleanyourphone.model.AppTypeFilter
 import com.drliki.cleanyourphone.model.DevicePackage
+import com.drliki.cleanyourphone.model.RemoteDeviceInfo
+import com.drliki.cleanyourphone.model.RemovalTier
+import com.drliki.cleanyourphone.ui.components.AppSortOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 
 class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -28,16 +37,80 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
     private val _actionLog = MutableStateFlow<List<ActionLogEntry>>(emptyList())
     val actionLog = _actionLog.asStateFlow()
 
+    private val _deviceInfo = MutableStateFlow(RemoteDeviceInfo())
+    val deviceInfo = _deviceInfo.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
     private val _snackbar = MutableStateFlow<String?>(null)
     val snackbar = _snackbar.asStateFlow()
 
-    init {
+    // ── Persistent Filter States across tab switches & session ───────────────
+    val searchQuery = MutableStateFlow("")
+    val isSearchActive = MutableStateFlow(false)
+    val selectedTypeFilter = MutableStateFlow(AppTypeFilter.ALL)
+    val selectedTier = MutableStateFlow<RemovalTier?>(null)
+    val selectedSort = MutableStateFlow(AppSortOption.NAME_ASC)
+    val isTailoredFilter = MutableStateFlow(false)
+
+    // Shizuku continuous listeners
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         refreshStatus()
+    }
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        refreshStatus()
+    }
+    private val requestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
+        refreshStatus()
+        if (grantResult == PackageManager.PERMISSION_GRANTED) {
+            loadPackages()
+        }
+    }
+
+    init {
+        try {
+            Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+            Shizuku.addBinderDeadListener(binderDeadListener)
+            Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
+        } catch (_: Throwable) { }
+
+        refreshStatus()
+        loadLocalDeviceInfo()
         loadPackages()
         loadActionLog()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            Shizuku.removeBinderReceivedListener(binderReceivedListener)
+            Shizuku.removeBinderDeadListener(binderDeadListener)
+            Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
+        } catch (_: Throwable) { }
+    }
+
+    fun loadLocalDeviceInfo() {
+        val ctx = getApplication<Application>()
+        val dm = ctx.resources.displayMetrics
+        val resolution = "${dm.widthPixels} x ${dm.heightPixels}"
+        val density = "${dm.densityDpi} dpi"
+
+        _deviceInfo.value = RemoteDeviceInfo(
+            manufacturer = Build.MANUFACTURER.replaceFirstChar { it.uppercase() },
+            brand = Build.BRAND.replaceFirstChar { it.uppercase() },
+            model = Build.MODEL,
+            deviceName = Build.DEVICE,
+            androidVersion = Build.VERSION.RELEASE,
+            sdkVersion = Build.VERSION.SDK_INT.toString(),
+            securityPatch = try { Build.VERSION.SECURITY_PATCH } catch (_: Throwable) { "Unknown" },
+            cpuAbi = Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown",
+            displayResolution = resolution,
+            displayDensity = density,
+            isTv = false,
+            host = "localhost",
+            port = 0
+        )
     }
 
     fun loadActionLog() {
@@ -57,20 +130,6 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _isLoading.value = true
             _packages.value = repo.scanLocalPackages()
-            _isLoading.value = false
-        }
-    }
-
-    fun updateUadLists() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _snackbar.value = "Updating UAD-ng definitions from GitHub..."
-            repo.updateFromGitHub()
-                .onSuccess { count ->
-                    _snackbar.value = "Updated $count package definitions from UAD-ng!"
-                    loadPackages()
-                }
-                .onFailure { _snackbar.value = "Failed to update catalog: ${it.message}" }
             _isLoading.value = false
         }
     }
@@ -102,6 +161,7 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
                 it.packageName in selected && !it.isSafeguardLocked && it.isEnabled
             }
             var ok = 0
+            var lastError: String? = null
             val newEntries = mutableListOf<ActionLogEntry>()
             targets.forEach { pkg ->
                 engine.disablePackage(pkg.packageName).onSuccess {
@@ -118,13 +178,19 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
                     _packages.value = _packages.value.map {
                         if (it.packageName == pkg.packageName) it.copy(isEnabled = false) else it
                     }
+                }.onFailure { err ->
+                    lastError = err.message
                 }
             }
             if (newEntries.isNotEmpty()) {
                 settings.recordActions(newEntries)
                 _actionLog.value = newEntries + _actionLog.value
             }
-            _snackbar.value = "Disabled $ok package(s)"
+            if (ok > 0) {
+                _snackbar.value = "Disabled $ok package(s)"
+            } else {
+                _snackbar.value = "Failed to disable packages: ${lastError ?: "Unknown error"}"
+            }
         }
     }
 
@@ -151,6 +217,8 @@ class ShizukuViewModel(app: Application) : AndroidViewModel(app) {
                     if (it.packageName == entry.packageName) it.copy(isEnabled = true) else it
                 }
                 _snackbar.value = "Undone: ${entry.appLabel}"
+            }.onFailure {
+                _snackbar.value = "Failed to undo ${entry.appLabel}: ${it.message}"
             }
         }
     }

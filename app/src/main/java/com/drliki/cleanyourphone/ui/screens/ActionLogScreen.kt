@@ -40,31 +40,75 @@ fun ActionLogScreen(
     val activeCount = actionLog.count { !it.isUndone }
     val restoredCount = actionLog.count { it.isUndone }
     var showRestoreAllDialog by remember { mutableStateOf(false) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf(LogFilterType.ALL) }
+    var selectedDevice by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            sourceTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                    if (isSearchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            placeholder = { Text("Search actions by app, pkg, device…") },
+                            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Clear, "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        Text(
-                            "$activeCount active · $restoredCount restored",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    } else {
+                        Column {
+                            Text(
+                                sourceTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "$activeCount active · $restoredCount restored",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = {
+                        if (isSearchActive) {
+                            isSearchActive = false
+                            searchQuery = ""
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.Close else Icons.Default.ArrowBack,
+                            contentDescription = if (isSearchActive) "Close search" else "Back"
+                        )
                     }
                 },
                 actions = {
-                    if (activeCount > 0) {
+                    IconButton(onClick = {
+                        isSearchActive = !isSearchActive
+                        if (!isSearchActive) searchQuery = ""
+                    }) {
+                        Icon(
+                            if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    }
+                    if (activeCount > 0 && !isSearchActive) {
                         TextButton(onClick = { showRestoreAllDialog = true }) {
                             Icon(Icons.Default.Restore, contentDescription = null, Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
@@ -80,6 +124,11 @@ fun ActionLogScreen(
     ) { innerPadding ->
         ActionLogContent(
             actionLog = actionLog,
+            searchQuery = searchQuery,
+            selectedFilter = selectedFilter,
+            onFilterChange = { selectedFilter = it },
+            selectedDevice = selectedDevice,
+            onDeviceChange = { selectedDevice = it },
             onUndoAction = onUndoAction,
             onUndoMultipleActions = onUndoMultipleActions,
             modifier = Modifier.padding(innerPadding)
@@ -120,13 +169,15 @@ fun ActionLogScreen(
 @Composable
 fun ActionLogContent(
     actionLog: List<ActionLogEntry>,
+    searchQuery: String = "",
+    selectedFilter: LogFilterType = LogFilterType.ALL,
+    onFilterChange: (LogFilterType) -> Unit = {},
+    selectedDevice: String? = null,
+    onDeviceChange: (String?) -> Unit = {},
     onUndoAction: (ActionLogEntry) -> Unit,
     onUndoMultipleActions: (List<ActionLogEntry>) -> Unit = { list -> list.forEach(onUndoAction) },
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf(LogFilterType.ALL) }
-    var selectedDevice by remember { mutableStateOf<String?>(null) }
     var selectedEntries by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     val distinctDevices = remember(actionLog) {
@@ -167,39 +218,18 @@ fun ActionLogContent(
         modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search Input (64dp uniform clearance)
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .height(64.dp),
-                placeholder = { Text("Search by app, package, device, or command…") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, "Clear")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
             // Device Filter Chips (shown when actions from multiple device connections exist)
             if (distinctDevices.size > 1) {
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         FilterChip(
                             selected = selectedDevice == null,
-                            onClick = { selectedDevice = null },
+                            onClick = { onDeviceChange(null) },
                             label = { Text("All Devices (${actionLog.size})") },
                             leadingIcon = { Icon(Icons.Default.Devices, null, Modifier.size(16.dp)) }
                         )
@@ -208,7 +238,7 @@ fun ActionLogContent(
                         val devCount = actionLog.count { it.deviceName == dev }
                         FilterChip(
                             selected = selectedDevice == dev,
-                            onClick = { selectedDevice = dev },
+                            onClick = { onDeviceChange(if (selectedDevice == dev) null else dev) },
                             label = { Text("$dev ($devCount)") },
                             leadingIcon = {
                                 Icon(
@@ -242,7 +272,7 @@ fun ActionLogContent(
                         }
                         FilterChip(
                             selected = selectedFilter == filter,
-                            onClick = { selectedFilter = filter },
+                            onClick = { onFilterChange(filter) },
                             label = { Text("${filter.label} ($count)") }
                         )
                     }
