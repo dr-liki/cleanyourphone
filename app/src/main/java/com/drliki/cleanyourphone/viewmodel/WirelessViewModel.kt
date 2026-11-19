@@ -155,16 +155,22 @@ class WirelessViewModel(app: Application) : AndroidViewModel(app) {
     fun connectManual(host: String, port: Int) =
         connectTo(DiscoveredDevice(host, port))
 
+    fun getMatchingConnectPort(host: String): Int? =
+        _devices.value.firstOrNull { it.host == host }?.port
+
     fun pairWithCode(host: String, pairingPort: Int, code: String, connectPort: Int) {
         viewModelScope.launch {
             _isLoading.value = true
-            val isPortOpen = engine.verifyPairingPort(host, pairingPort)
-            if (isPortOpen) {
-                _snackbar.value = "Pairing port verified! Connecting to debugging port $connectPort..."
-                connectTo(DiscoveredDevice(host, connectPort, "Paired Device ($host)", "Android Phone"))
-            } else {
-                _snackbar.value = "Cannot reach pairing port $pairingPort on $host. Check pairing code screen on other phone."
-            }
+            _snackbar.value = "Pairing with $host:$pairingPort..."
+            engine.pair(host, pairingPort, code)
+                .onSuccess {
+                    _snackbar.value = "Paired successfully! Connecting to $host:$connectPort..."
+                    connectTo(DiscoveredDevice(host, connectPort, "Paired Device ($host)", "Android Phone"))
+                }
+                .onFailure { err ->
+                    val msg = err.message ?: "Session expired or rejected"
+                    _snackbar.value = "Pairing failed: $msg. Ensure 'Pair with pairing code' popup remains open on target phone."
+                }
             _isLoading.value = false
         }
     }

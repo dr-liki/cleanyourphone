@@ -295,7 +295,7 @@ fun WirelessScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        // Box 1: Port Input (Uniform Size)
+                                        // Box 1: Port Input (Uniform 64dp Size)
                                         OutlinedTextField(
                                             value = portInput,
                                             onValueChange = {
@@ -306,13 +306,13 @@ fun WirelessScreen(
                                             placeholder = { Text("5555") },
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .height(56.dp),
+                                                .height(64.dp),
                                             singleLine = true,
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                             shape = RoundedCornerShape(12.dp)
                                         )
 
-                                        // Box 2: Scan Subnet (Uniform Size)
+                                        // Box 2: Scan Subnet (Uniform 64dp Size)
                                         Button(
                                             onClick = {
                                                 val p = portInput.toIntOrNull() ?: 5555
@@ -321,7 +321,7 @@ fun WirelessScreen(
                                             enabled = !isScanning,
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .height(56.dp),
+                                                .height(64.dp),
                                             shape = RoundedCornerShape(12.dp),
                                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                                         ) {
@@ -343,12 +343,12 @@ fun WirelessScreen(
                                             }
                                         }
 
-                                        // Box 3: Pair (Uniform Size)
+                                        // Box 3: Pair (Uniform 64dp Size)
                                         OutlinedButton(
                                             onClick = { showPairingDialog = true },
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .height(56.dp),
+                                                .height(64.dp),
                                             shape = RoundedCornerShape(12.dp),
                                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                                         ) {
@@ -437,13 +437,15 @@ fun WirelessScreen(
                                 onValueChange = { manualIp = it },
                                 label = { Text("Target Phone IP Address") },
                                 placeholder = { Text("e.g. 192.168.1.105") },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(12.dp)
                             )
 
-                            // Pairing Port and Connect Port (Uniform Equal-Sized Boxes)
+                            // Pairing Port and Connect Port (Uniform Equal-Sized 64dp Boxes)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -456,7 +458,7 @@ fun WirelessScreen(
                                     placeholder = { Text("e.g. 38411") },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(56.dp),
+                                        .height(64.dp),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     shape = RoundedCornerShape(12.dp)
@@ -469,12 +471,18 @@ fun WirelessScreen(
                                     placeholder = { Text("e.g. 41255") },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(56.dp),
+                                        .height(64.dp),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     shape = RoundedCornerShape(12.dp)
                                 )
                             }
+
+                            Text(
+                                "Pairing Port is temporary (shown in pairing popup). Connect Port is the port under 'IP address & Port' on the target phone.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
                             AnimatedVisibility(visible = manualPairingPort.isNotBlank()) {
                                 OutlinedTextField(
@@ -482,7 +490,9 @@ fun WirelessScreen(
                                     onValueChange = { manualPairingCode = it },
                                     label = { Text("6-Digit Pairing Code (from other phone dialog)") },
                                     placeholder = { Text("e.g. 123456") },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(64.dp),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     shape = RoundedCornerShape(12.dp)
@@ -492,9 +502,11 @@ fun WirelessScreen(
                             if (manualPairingCode.isNotBlank() && manualPairingPort.isNotBlank()) {
                                 Button(
                                     onClick = {
-                                        val pPort = manualPairingPort.toIntOrNull() ?: 5555
-                                        val cPort = manualPort.toIntOrNull() ?: pPort
-                                        viewModel.pairWithCode(manualIp.trim(), pPort, manualPairingCode.trim(), cPort)
+                                        val pPort = manualPairingPort.toIntOrNull() ?: 0
+                                        val cPort = manualPort.toIntOrNull() ?: 5555
+                                        if (pPort > 0) {
+                                            viewModel.pairWithCode(manualIp.trim(), pPort, manualPairingCode.trim(), cPort)
+                                        }
                                     },
                                     enabled = manualIp.isNotBlank() && !isLoading,
                                     modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -606,11 +618,17 @@ fun WirelessScreen(
 
     // Pairing Dialog with auto-discovered fields
     if (showPairingDialog) {
+        val matchingConnectPort = remember(discoveredPairingService, devices) {
+            discoveredPairingService?.let { pairing ->
+                devices.firstOrNull { it.host == pairing.host }?.port
+            } ?: 0
+        }
         PairingDialog(
             qrPayload = pairingQrPayload,
             pairingCode = pairingCode,
             discoveredHost = discoveredPairingService?.host ?: "",
             discoveredPairingPort = discoveredPairingService?.port ?: 0,
+            discoveredConnectPort = matchingConnectPort,
             discoveredDeviceName = discoveredPairingService?.serviceName ?: "",
             onRegenerateQr = { viewModel.generateNewPairingCredentials() },
             onPairWithCode = { h, pPort, code, cPort ->
@@ -856,12 +874,10 @@ private fun DiscoveredDeviceCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
@@ -893,12 +909,17 @@ private fun DiscoveredDeviceCard(
                 }
             }
 
+            Spacer(Modifier.height(10.dp))
+
             Button(
                 onClick = onConnect,
                 enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Connect")
+                Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Connect to Device")
             }
         }
     }

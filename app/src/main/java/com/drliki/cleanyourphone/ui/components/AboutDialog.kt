@@ -69,7 +69,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Text(
-                        "v2.4.0 · Material 3",
+                        "v2.5.0 · Material 3",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -132,7 +132,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "• Universal-Debloater-Alliance (UAD-ng)\n• Shizuku by Rikka\n• DADb by mobile.dev\n• ZXing QR Project",
+                    "• Universal-Debloater-Alliance (UAD-ng)\n• Shizuku by Rikka\n• Kadb by Flyfish Xu\n• DADb by mobile.dev\n• ZXing QR Project",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

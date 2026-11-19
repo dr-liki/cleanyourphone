@@ -1,11 +1,15 @@
 package com.drliki.cleanyourphone.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.drliki.cleanyourphone.model.ActionLogEntry
 import com.drliki.cleanyourphone.model.AppTypeFilter
 import com.drliki.cleanyourphone.model.DevicePackage
@@ -59,6 +64,10 @@ fun PackageManagementContent(
     var selectedSort by remember { mutableStateOf(AppSortOption.NAME_ASC) }
     var showSortMenu by remember { mutableStateOf(false) }
     var selectedPkgs by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
 
     val filtered = remember(packages, searchQuery, selectedTypeFilter, selectedTier) {
         packages.filter { pkg ->
@@ -279,6 +288,7 @@ fun PackageManagementContent(
 
                 // ── Package list ─────────────────────────────────────────
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -311,25 +321,33 @@ fun PackageManagementContent(
                     }
                 }
 
-                // ── Bottom action bar ────────────────────────────────────
+                // ── Bottom action bar (Optimized to prevent text overflow) ───
                 AnimatedVisibility(visible = selectedPkgs.isNotEmpty()) {
-                    Surface(tonalElevation = 4.dp) {
+                    Surface(
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Row(
-                            Modifier.fillMaxWidth().padding(16.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                                 Text(
-                                    "${selectedPkgs.size} package(s) selected",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
+                                    "${selectedPkgs.size} selected",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
                                 )
                                 Text(
                                     "pm disable-user --user 0",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1
                                 )
                             }
                             Button(
@@ -337,15 +355,41 @@ fun PackageManagementContent(
                                     onDisablePackages(selectedPkgs.toSet())
                                     selectedPkgs = emptySet()
                                 },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                             ) {
                                 Icon(Icons.Default.Block, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Disable Selected")
+                                Spacer(Modifier.width(6.dp))
+                                Text("Disable Selected", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                             }
                         }
                     }
                 }
+            }
+
+            // ── Scroll to Top Floating Button Overlay ─────────────────
+            AnimatedVisibility(
+                visible = showScrollToTop,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = if (selectedPkgs.isNotEmpty()) 84.dp else 16.dp
+                    )
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+                }
+            }
             }
         }
     }
@@ -367,14 +411,19 @@ fun PackageCard(
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Left Column: App Icon at top, with selection checkbox / locked icon / disabled tick icon below it
+            // Left Column: App Icon at top-left, selection/tick/lock button at bottom-left (proportionate spacing)
             Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(end = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top,
-                modifier = Modifier.padding(end = 12.dp)
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 // Real App Icon (from PackageManager or MD3 glyph)
                 AppIconView(
@@ -383,9 +432,9 @@ fun PackageCard(
                     size = 46.dp
                 )
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
 
-                // Selection checkbox or status icon directly below the app icon
+                // Selection checkbox or status icon directly at bottom-left below app icon
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(32.dp)

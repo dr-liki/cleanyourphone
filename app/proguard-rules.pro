@@ -14,6 +14,10 @@
 -keep class dadb.** { *; }
 -dontwarn dadb.**
 
+# Kadb
+-keep class com.flyfishxu.kadb.** { *; }
+-dontwarn com.flyfishxu.kadb.**
+
 # JUnit Platform (transitive via dadb) — not available on Android, safe to suppress
 -dontwarn org.junit.**
 -dontwarn java.util.spi.ToolProvider

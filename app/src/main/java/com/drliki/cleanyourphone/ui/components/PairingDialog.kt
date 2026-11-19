@@ -29,6 +29,7 @@ fun PairingDialog(
     pairingCode: String,
     discoveredHost: String = "",
     discoveredPairingPort: Int = 0,
+    discoveredConnectPort: Int = 0,
     discoveredDeviceName: String = "",
     onRegenerateQr: () -> Unit,
     onPairWithCode: (host: String, pairingPort: Int, code: String, connectPort: Int) -> Unit,
@@ -41,8 +42,10 @@ fun PairingDialog(
     var pairingPort by remember(discoveredPairingPort) {
         mutableStateOf(if (discoveredPairingPort > 0) discoveredPairingPort.toString() else "")
     }
+    var connectPort by remember(discoveredConnectPort) {
+        mutableStateOf(if (discoveredConnectPort > 0) discoveredConnectPort.toString() else "")
+    }
     var codeInput by remember { mutableStateOf("") }
-    var connectPort by remember { mutableStateOf("") }
 
     // Generate QR bitmap when qrPayload changes
     val qrBitmap = remember(qrPayload) {
@@ -164,6 +167,7 @@ fun PairingDialog(
                             }
                         }
 
+                        // Host Input (64dp height for full visibility)
                         OutlinedTextField(
                             value = host,
                             onValueChange = { host = it },
@@ -171,13 +175,13 @@ fun PairingDialog(
                             placeholder = { Text("e.g. 192.168.1.105") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(64.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             shape = RoundedCornerShape(12.dp)
                         )
 
-                        // Pairing Port and Connect Port (Uniform Equal-Sized Boxes)
+                        // Pairing Port and Connect Port (Uniform Equal-Sized 64dp Boxes)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -190,7 +194,7 @@ fun PairingDialog(
                                 placeholder = { Text("e.g. 38411") },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(56.dp),
+                                    .height(64.dp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(12.dp)
@@ -199,16 +203,23 @@ fun PairingDialog(
                                 value = connectPort,
                                 onValueChange = { connectPort = it },
                                 label = { Text("Connect Port", maxLines = 1) },
-                                placeholder = { Text("Optional") },
+                                placeholder = { Text("e.g. 41255") },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(56.dp),
+                                    .height(64.dp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(12.dp)
                             )
                         }
 
+                        Text(
+                            "Pairing Port is temporary (shown in pairing popup). Connect Port is the port under 'IP address & Port' on the target phone.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // 6-Digit Code Input (64dp height for full visibility)
                         OutlinedTextField(
                             value = codeInput,
                             onValueChange = { codeInput = it },
@@ -216,7 +227,7 @@ fun PairingDialog(
                             placeholder = { Text("Shown on other phone dialog") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(64.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             shape = RoundedCornerShape(12.dp)
@@ -226,13 +237,17 @@ fun PairingDialog(
 
                         Button(
                             onClick = {
-                                val pPort = pairingPort.toIntOrNull() ?: 5555
-                                val cPort = connectPort.toIntOrNull() ?: pPort
-                                onPairWithCode(host.trim(), pPort, codeInput.trim(), cPort)
-                                onDismiss()
+                                val pPort = pairingPort.toIntOrNull() ?: 0
+                                val cPort = connectPort.toIntOrNull() ?: 5555
+                                if (pPort > 0) {
+                                    onPairWithCode(host.trim(), pPort, codeInput.trim(), cPort)
+                                    onDismiss()
+                                }
                             },
                             enabled = host.isNotBlank() && pairingPort.isNotBlank() && codeInput.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Link, contentDescription = null, Modifier.size(18.dp))
@@ -252,7 +267,7 @@ fun PairingDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with QR code' and scan this screen.",
+                                "On the other phone:\nSettings > Developer options > Wireless debugging > 'Pair device with QR code' to scan.\n\nTip: For phone-to-phone pairing, the 'Pairing Code' tab with the 6-digit PIN is the recommended and standard method.",
                                 modifier = Modifier.padding(10.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

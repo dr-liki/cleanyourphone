@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📱 CleanYourPhone v2.4
+# 📱 CleanYourPhone v2.5
 
 **Debloat Android phones — directly on this device via Shizuku, or wirelessly connect to other phones over Wi-Fi.**
 
@@ -34,6 +34,20 @@
 - **Pair Device with QR & PIN**: Seamless pairing dialog supporting AOSP wireless pairing QR codes and 6-digit Wi-Fi pairing codes.
 - **Robust RSA Key Pair Generation**: Generates and manages internal 2048-bit RSA keys, resolving `android/adbkey: open failed: ENOENT` permanently.
 - **Remote Debloater**: Queries packages installed on the remote phone, evaluates them against UAD-ng safety tiers, and disables them remotely over ADB.
+
+---
+
+## 🌟 What's New in v2.5
+
+- **📐 Proportionate Card Spacing**: App icon anchored top-left, selection/lock/tick button anchored bottom-left. Card height scales dynamically with long package descriptions while maintaining proportional vertical separation.
+- **🔄 Action Log Multi-Select & Batch Restore**: Action log screen now supports multi-select checkboxes below the app icon, a persistent bottom "Restore Selected" action bar, and "Select All Active" toggle.
+- **📂 Mode-Specific Action Logs**: Action log opened from Shizuku mode displays only on-device actions; Wireless mode displays only remote ADB actions; Mode Selection screen displays combined activity.
+- **⬆️ Fast Scroll-to-Top Overlay**: Quick-return floating action button appears on the bottom right on both apps and action log screens for fast one-tap navigation to top.
+- **⚡ Android 11+ SPAKE2 Wireless Pairing Engine**: Integrated modern `Kadb` engine to perform genuine TLS SPAKE2 wireless pairing with 6-digit codes.
+- **⏳ 15-Second Authorization Retry Loop**: Replaces instant handshake timeouts with a 15-second polling window so users have ample time to tap "Always allow" on the target phone.
+- **🔌 Connect Port vs Pairing Port Auto-Discovery**: Automatically matches discovered connect port with pairing service for the same IP, preventing `ECONNRESET` / `ECONNREFUSED` socket confusion.
+- **🔤 Optimized 64dp Text Field Clearances**: Expanded text fields across Wireless ADB and Pairing screens so all digits, port numbers, and floating labels remain 100% visible.
+- **📲 Ergonomic Full-Width Connect Button**: Positioned directly below the device IP line in discovered devices list for effortless tapping.
 
 ---
 

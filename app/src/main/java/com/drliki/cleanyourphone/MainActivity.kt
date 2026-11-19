@@ -121,13 +121,28 @@ fun CleanYourPhoneAppRoot(
                 )
             }
             AppScreen.ACTION_LOG -> {
+                val (logToDisplay, logTitle) = when (previousScreen) {
+                    AppScreen.SHIZUKU -> Pair(shizukuLog, "Shizuku Action Log")
+                    AppScreen.WIRELESS -> Pair(wirelessLog, "Wireless ADB Action Log")
+                    else -> Pair(combinedActionLog, "All Activities Log")
+                }
                 ActionLogScreen(
-                    actionLog = combinedActionLog,
+                    actionLog = logToDisplay,
+                    sourceTitle = logTitle,
                     onUndoAction = { entry ->
                         if (entry.deviceName == "Local Device" || shizukuLog.any { it.id == entry.id }) {
                             shizukuVm.undoAction(entry)
                         } else {
                             wirelessVm.undoAction(entry)
+                        }
+                    },
+                    onUndoMultipleActions = { entries ->
+                        entries.forEach { entry ->
+                            if (entry.deviceName == "Local Device" || shizukuLog.any { it.id == entry.id }) {
+                                shizukuVm.undoAction(entry)
+                            } else {
+                                wirelessVm.undoAction(entry)
+                            }
                         }
                     },
                     onNavigateBack = { currentScreen = previousScreen }

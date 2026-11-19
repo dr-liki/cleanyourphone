@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to publish (e.g. v2.4.0)"
+        description: "Release tag to publish (e.g. v2.5.0)"
         required: false
-        default: "v2.4.0"
+        default: "v2.5.0"
 
 permissions:
   contents: write
@@ -94,7 +94,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME}"
           if [[ ! "$VERSION" =~ ^v ]]; then
-            VERSION="${{ github.event.inputs.release_tag || 'v2.3.0' }}"
+            VERSION="${{ github.event.inputs.release_tag || 'v2.5.0' }}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
