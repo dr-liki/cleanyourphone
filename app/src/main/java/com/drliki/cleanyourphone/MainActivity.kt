@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.drliki.cleanyourphone.engine.ShizukuStatus
 import com.drliki.cleanyourphone.ui.components.AboutDialog
 import com.drliki.cleanyourphone.ui.components.SettingsDialog
 import com.drliki.cleanyourphone.ui.screens.ActionLogScreen
@@ -141,7 +142,7 @@ fun CleanYourPhoneAppRoot(
                 val isConnected = if (isWirelessMode) {
                     wirelessVm.isConnected.value && (targetDeviceFilter == null || targetDeviceFilter == wirelessVm.connectedName.value)
                 } else if (previousScreen == AppScreen.SHIZUKU) {
-                    shizukuVm.isShizukuAvailable.value
+                    shizukuVm.status.value is ShizukuStatus.Ready
                 } else {
                     true
                 }
@@ -154,7 +155,7 @@ fun CleanYourPhoneAppRoot(
                         if (isWirelessMode) {
                             wirelessVm.isConnected.value && (dev == null || dev == wirelessVm.connectedName.value)
                         } else if (previousScreen == AppScreen.SHIZUKU) {
-                            shizukuVm.isShizukuAvailable.value
+                            shizukuVm.status.value is ShizukuStatus.Ready
                         } else {
                             true
                         }
