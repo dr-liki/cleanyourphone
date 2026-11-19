@@ -191,7 +191,8 @@ fun WirelessScreen(
                             )
                         }
                     }
-                },
+                }
+            },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -1152,25 +1153,6 @@ private fun SavedDeviceProfileCard(
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Connect Device", style = MaterialTheme.typography.labelMedium)
-                }
-
-                OutlinedButton(
-                    onClick = { showDeleteConfirmDialog = true },
-                    modifier = Modifier.height(40.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Delete", style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
-    }
                 ) {
                     Icon(Icons.Default.Link, contentDescription = null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
