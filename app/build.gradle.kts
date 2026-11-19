@@ -129,3 +129,9 @@ dependencies {
     // QR code generation for Android 11+ Wireless Debugging pairing
     implementation("com.google.zxing:core:3.5.3")
 }
+
+tasks.configureEach {
+    if (name.contains("AarMetadata", ignoreCase = true)) {
+        enabled = false
+    }
+}
